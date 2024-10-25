@@ -1,0 +1,8 @@
+DEFINE_NEAR_METHOD(add_provider)
+DEFINE_NEAR_METHOD(add_provider_data)
+DEFINE_NEAR_METHOD(get_provider)
+DEFINE_NEAR_METHOD(get_provider_data)
+DEFINE_NEAR_METHOD(init)
+DEFINE_NEAR_METHOD(process_query)
+DEFINE_NEAR_METHOD(remove_provider_data)
+DEFINE_NEAR_METHOD(update_provider_value)
