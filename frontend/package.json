@@ -1,10 +1,7 @@
 {
-  "name": "hello-near",
-  "version": "1.0.0",
+  "name": "frontend",
+  "version": "0.1.0",
   "private": true,
-  "engines": {
-    "node": ">=18"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,45 +9,21 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@llamaindex/core": "^0.3.3",
-    "@near-js/providers": "^1.0.0",
-    "@near-wallet-selector/bitte-wallet": "^8.9.13",
-    "@near-wallet-selector/core": "^8.9.13",
-    "@near-wallet-selector/ethereum-wallets": "^8.9.13",
-    "@near-wallet-selector/here-wallet": "^8.9.13",
-    "@near-wallet-selector/ledger": "^8.9.13",
-    "@near-wallet-selector/meteor-wallet": "^8.9.13",
-    "@near-wallet-selector/modal-ui": "^8.9.13",
-    "@near-wallet-selector/my-near-wallet": "^8.9.13",
-    "@near-wallet-selector/sender": "^8.9.13",
-    "@web3modal/wagmi": "^5.1.10",
-    "@xenova/transformers": "2.6.1",
-    "bootstrap": "^5",
-    "bootstrap-icons": "^1.11.3",
-    "llamaindex": "^0.7.5",
-    "localforage": "1.10.0",
-    "near-api-js": "^4.0.3",
-    "next": "14.2.13",
-    "react": "^18",
-    "react-dom": "^18",
-    "sharp": "^0.33.5",
-    "wagmi": "^2.12.16"
-  },
-  "overrides": {
-    "@near-wallet-selector/ethereum-wallets": {
-      "near-api-js": "4.0.3"
-    }
+    "@mlc-ai/web-llm": "^0.2.73",
+    "@xenova/transformers": "^2.17.2",
+    "localforage": "^1.10.0",
+    "next": "15.0.1",
+    "react": "19.0.0-rc-69d4b800-20241021",
+    "react-dom": "19.0.0-rc-69d4b800-20241021"
   },
   "devDependencies": {
-    "@types/node": "^22.7.9",
-    "@types/react": "18.3.12",
-    "autoprefixer": "^10.4.20",
-    "encoding": "^0.1.13",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
     "eslint": "^8",
-    "eslint-config-next": "14.2.13",
-    "pino-pretty": "^11.2.2",
-    "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.14",
-    "typescript": "^5.6.3"
+    "eslint-config-next": "15.0.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
   }
 }
