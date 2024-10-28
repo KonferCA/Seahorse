@@ -1,47 +1,65 @@
-import { NetworkId, EVMWalletChain } from '../config';
-import { reconnect, http, createConfig } from "@wagmi/core";
-import { walletConnect, injected } from "@wagmi/connectors";
-import { createWeb3Modal } from "@web3modal/wagmi";
+import { createContext } from 'react';
+import { providers } from 'near-api-js';
+import '@near-wallet-selector/modal-ui/styles.css';
+import { setupModal } from '@near-wallet-selector/modal-ui';
+import { setupWalletSelector } from '@near-wallet-selector/core';
+import { setupMyNearWallet } from '@near-wallet-selector/my-near-wallet';
+import { setupHereWallet } from '@near-wallet-selector/here-wallet';
+import { setupLedger } from '@near-wallet-selector/ledger';
+import { setupMeteorWallet } from '@near-wallet-selector/meteor-wallet';
+import { setupSender } from '@near-wallet-selector/sender';
+import { setupBitteWallet } from '@near-wallet-selector/bitte-wallet';
 
-// Config
-const near = {
-    id: EVMWalletChain.chainId,
-    name: EVMWalletChain.name,
-    nativeCurrency: {
-        decimals: 18,
-        name: "NEAR",
-        symbol: "NEAR",
-    },
+export class Wallet {
+    selector: any;
+    networkId: string;
+    createAccessKeyFor: string | undefined;
 
-    rpcUrls: {
-        default: { http: [EVMWalletChain.rpc] },
-        public: { http: [EVMWalletChain.rpc] },
-    },
+    constructor({ networkId = 'testnet', createAccessKeyFor = undefined }) {
+        this.createAccessKeyFor = createAccessKeyFor;
+        this.networkId = networkId;
+    }
 
-    blockExplorers: {
-        default: {
-            name: "NEAR Explorer",
-            url: EVMWalletChain.explorer,
-        },
-    },
+    startUp = async (accountChangeHook: (account: string) => void) => {
+        this.selector = await setupWalletSelector({
+            network: this.networkId,
+            modules: [
+                setupMyNearWallet(),
+                setupHereWallet(),
+                setupLedger(),
+                setupMeteorWallet(),
+                setupSender(),
+                setupBitteWallet(),
+            ],
+        });
 
-    testnet: NetworkId === "testnet",
-};
+        const walletSelector = await this.selector;
+        const isSignedIn = walletSelector.isSignedIn();
+        const accountId = isSignedIn ? walletSelector.store.getState().accounts[0].accountId : '';
 
-// Get your projectId at https://cloud.reown.com
-const projectId = '5bb0fe33763b3bea40b8d69e4269b4ae';
+        walletSelector.store.observable.subscribe(async (state: any) => {
+            const signedAccount = state?.accounts.find((account: any) => account.active)?.accountId;
+            accountChangeHook(signedAccount || '');
+        });
 
-export const wagmiConfig = createConfig({
-    chains: [near],
-    transports: { [near.id]: http() },
-    connectors: [
-        walletConnect({ projectId, showQrModal: false }),
-        injected({ shimDisconnect: true }),
-    ],
+        return accountId;
+    };
+
+    signIn = async () => {
+        const modal = setupModal(await this.selector, { contractId: this.createAccessKeyFor });
+        modal.show();
+    };
+
+    signOut = async () => {
+        const selectedWallet = await (await this.selector).wallet();
+        selectedWallet.signOut();
+    };
+}
+
+export const NearContext = createContext<{
+    wallet: Wallet | undefined;
+    signedAccountId: string;
+}>({
+    wallet: undefined,
+    signedAccountId: '',
 });
-
-// Preserve login state on page reload
-reconnect(wagmiConfig);
-
-// Modal for login
-export const web3Modal = createWeb3Modal({ wagmiConfig, projectId });
