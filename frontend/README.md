@@ -26,7 +26,7 @@ pnpm dev
 
 #### ⚠️ Chrome, Opera and Edge are the only currently supported working browsers - see [here](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API#browser_compatibility) for full list.
 
-#### ⚠️ Please refer to [here](https://github.com/KonferCA/Seahorse/blob/main/README.md) for contribution guidelines.
+#### ⚠️ Please refer to [here](https://github.com/KonferCA/Seahorse/blob/main/docs/CONTRIBUTING.md) for contribution guidelines.
 
 <hr/>
 
