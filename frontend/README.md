@@ -1,3 +1,5 @@
+# Seahorse Frontend 🌊
+
 ## Getting Started
 
 > Ensure you are in the frontend folder:
