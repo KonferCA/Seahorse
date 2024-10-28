@@ -1,26 +1,38 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Seahorse Frontend 🌊
 
 ## Getting Started
 
-First, run the development server:
-
+> Ensure you are in the frontend folder:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+$ cd frontend/
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> Install necessary packages:
+```bash
+pnpm install
+```
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+> Run the development server:
+```bash
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+> Include .env file in the frontend root folder
 
-## Learn More about NEAR
+> Open your browser to https://localhost:3000/
+### Note:
+
+#### ⚠️ For now, ask a [CODEOWNER](https://github.com/KonferCA/Seahorse/blob/main/.github/CODEOWNERS) for the `.env` file until [konbini](https://github.com/juancwu/konbini) is implemented.
+
+#### ⚠️ Chrome, Opera and Edge are the only currently supported working browsers - see [here](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API#browser_compatibility) for full list.
+
+#### ⚠️ Please refer to [here](https://github.com/KonferCA/Seahorse/blob/main/README.md) for contribution guidelines.
+
+<hr/>
+
+## Resources
+
+### Learn More about NEAR
 
 To learn more about NEAR, take a look at the following resources:
 
@@ -29,7 +41,7 @@ To learn more about NEAR, take a look at the following resources:
 
 You can check out [the NEAR repository](https://github.com/near) - your feedback and contributions are welcome!
 
-## Learn More about Next.js
+### Learn More about Next.js
 
 To learn more about Next.js, take a look at the following resources:
 
@@ -38,8 +50,4 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
