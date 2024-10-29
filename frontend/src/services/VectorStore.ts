@@ -7,7 +7,7 @@ export interface Document {
 
 export interface ChunkMetadata extends Record<any, any> {
     chunk: string;
-    docId: number;
+    docId: string;
     chunkIndex: number;
 }
 
@@ -22,7 +22,7 @@ export class VectorStore {
         this.chunkSize = 100;
         this.chunkOverlap = 20;
         this.store = localforage.createInstance({
-            name: 'vector-this.store',
+            name: 'vector-store',
             version: 1.0,
         });
     }
@@ -35,7 +35,7 @@ export class VectorStore {
             this.store.setItem('documents', []),
         ]);
         this.initialized = true;
-        console.log('Vector this.store initialized');
+        console.log('Vector store initialized');
     }
 
     chunkText(text: string) {
@@ -75,12 +75,10 @@ export class VectorStore {
         if (!this.initialized) await this.initialize();
 
         const chunks = this.chunkText(text);
-        const documents =
-            (await this.store.getItem<Document[]>('documents')) || [];
-        const existingMetadata =
-            (await this.store.getItem<ChunkMetadata[]>('metadata')) || [];
+        const documents = await this.store.getItem<Document[]>('documents') || [];
+        const existingMetadata = await this.store.getItem<ChunkMetadata[]>('metadata') || [];
 
-        const docId = documents.length;
+        const docId = `doc_${documents.length}`;
         documents.push({ text, metadata });
 
         for (let i = 0; i < chunks.length; i++) {
@@ -98,31 +96,25 @@ export class VectorStore {
         return docId;
     }
 
-    async addEmbedding(embedding: number[], docId: number) {
-        const vectors = (await this.store.getItem<number[][]>('vectors')) || [];
-        if (docId !== undefined) {
-            vectors.push(embedding);
-            await this.store.setItem('vectors', vectors);
-            console.log(
-                `Added embedding for document ${docId}, total vectors: ${vectors.length}`
-            );
-        }
+    async addEmbedding(embedding: number[], docId: string) {
+        const vectors = await this.store.getItem('vectors') || [];
+        vectors.push({
+            docId,
+            vector: embedding
+        });
+        await this.store.setItem('vectors', vectors);
+        console.log(`Added embedding for document ${docId}, total vectors: ${vectors.length}`);
     }
 
-    async similaritySearch(
-        queryEmbedding: number[],
-        queryText: string,
-        topK = 3
-    ) {
-        const vectors = (await this.store.getItem<number[][]>('vectors')) || [];
-        const metadata =
-            (await this.store.getItem<ChunkMetadata[]>('metadata')) || [];
+    async similaritySearch(queryVector: number[], queryText: string, k = 3) {
+        const vectors = await this.store.getItem('vectors') || [];
+        const metadata = await this.store.getItem<ChunkMetadata[]>('metadata') || [];
 
         if (vectors.length === 0) return [];
 
         const queryTerms = new Set(queryText.toLowerCase().split(/\s+/));
 
-        const similarities = vectors.map((vector, index) => {
+        const similarities = vectors.map(({docId, vector}, index) => {
             const chunk = metadata[index]?.chunk || '';
 
             const chunkTerms = new Set(chunk.toLowerCase().split(/\s+/));
@@ -130,40 +122,29 @@ export class VectorStore {
                 chunkTerms.has(term)
             ).length;
 
-            const dotProduct = queryEmbedding.reduce(
-                (sum, q, i) => sum + q * vector[i],
-                0
-            );
-            const magnitude1 = Math.sqrt(
-                queryEmbedding.reduce((sum, q) => sum + q * q, 0)
-            );
-            const magnitude2 = Math.sqrt(
-                vector.reduce((sum, v) => sum + v * v, 0)
-            );
-            const cosineSimilarity = dotProduct / (magnitude1 * magnitude2);
-
-            const score = cosineSimilarity * (1 + 0.1 * termOverlap);
+            const score = this.cosineSimilarity(queryVector, vector) * (1 + 0.1 * termOverlap);
 
             return {
-                index,
-                score,
                 chunk,
                 metadata: metadata[index],
+                score
             };
         });
 
-        return similarities.sort((a, b) => b.score - a.score).slice(0, topK);
+        return similarities.sort((a, b) => b.score - a.score).slice(0, k);
     }
 
-    cosineSimilarity(a: number[], b: number[]) {
+    private cosineSimilarity(a: number[], b: number[]) {
         let dotProduct = 0;
         let normA = 0;
         let normB = 0;
+        
         for (let i = 0; i < a.length; i++) {
             dotProduct += a[i] * b[i];
             normA += a[i] * a[i];
             normB += b[i] * b[i];
         }
+        
         return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
     }
 }

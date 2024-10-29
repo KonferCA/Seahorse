@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import Image from 'next/image';
 import googleIcon from '@/components/icons/google.svg';
+
+
 type GoogleDataPanelProps = {
     onDataReceived: (calendar: any[], emails: any[]) => void;
 };
 
-export default function GoogleDataPanel({
-    onDataReceived,
-}: GoogleDataPanelProps) {
+export default function GoogleDataPanel({ onDataReceived }: GoogleDataPanelProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -55,7 +55,7 @@ export default function GoogleDataPanel({
                 onClick={() => login()}
                 disabled={isLoading}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border 
-          ${isLoading
+                    ${isLoading
                         ? 'bg-gray-100 border-gray-200 cursor-not-allowed'
                         : 'bg-white border-gray-300 hover:bg-gray-50'
                     }`}
