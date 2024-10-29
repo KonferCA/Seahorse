@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 type GroupProgress = {
-    type: 'email' | 'calendar' | 'document';
+    type: 'email' | 'calendar' | 'document' | 'note';
     total: number;
     completed: number;
     error: number;
@@ -11,7 +11,8 @@ type GroupProgress = {
 const typeEmojis = {
     email: '📧',
     calendar: '📅',
-    document: '📄'
+    document: '📄',
+    note: '📝'
 };
 
 type RAGStatusPanelProps = {

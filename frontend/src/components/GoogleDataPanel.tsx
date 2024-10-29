@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import Image from 'next/image';
-import googleIcon from '@/app/components/icons/google.svg';
+import googleIcon from '@/components/icons/google.svg';
 type GoogleDataPanelProps = {
   onDataReceived: (calendar: any[], emails: any[]) => void;
 };
