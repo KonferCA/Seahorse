@@ -2993,11 +2993,15 @@ function NearBindgen({
   };
 }
 
-var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _dec7, _dec8, _dec9, _class, _class2;
-let DataProviderContract = (_dec = NearBindgen({}), _dec2 = initialize(), _dec3 = call({}), _dec4 = call({}), _dec5 = call({}), _dec6 = call({}), _dec7 = call({}), _dec8 = view(), _dec9 = view(), _dec(_class = (_class2 = class DataProviderContract {
+var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _dec7, _dec8, _dec9, _dec10, _dec11, _dec12, _dec13, _dec14, _dec15, _dec16, _dec17, _dec18, _dec19, _dec20, _dec21, _dec22, _class, _class2;
+let DataProviderContract = (_dec = NearBindgen({}), _dec2 = initialize(), _dec3 = call({}), _dec4 = call({}), _dec5 = call({}), _dec6 = call({}), _dec7 = call({}), _dec8 = view(), _dec9 = view(), _dec10 = call({}), _dec11 = call({}), _dec12 = call({}), _dec13 = view(), _dec14 = view(), _dec15 = view(), _dec16 = view(), _dec17 = view(), _dec18 = call({}), _dec19 = view(), _dec20 = view(), _dec21 = view(), _dec22 = call({}), _dec(_class = (_class2 = class DataProviderContract {
   constructor() {
     this.providers = new LookupMap('p');
     this.providerData = new LookupMap('d');
+    this.friendRequests = new LookupMap('fr');
+    this.sharedKeys = new LookupMap('sk');
+    this.encryptedData = new LookupMap('ed');
+    this.friendRequestKeys = new Vector('frk');
   }
   init() {
     log("Initializing contract");
@@ -3135,7 +3139,373 @@ let DataProviderContract = (_dec = NearBindgen({}), _dec2 = initialize(), _dec3 
       return [];
     }
   }
-}, _applyDecoratedDescriptor(_class2.prototype, "init", [_dec2], Object.getOwnPropertyDescriptor(_class2.prototype, "init"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "add_provider", [_dec3], Object.getOwnPropertyDescriptor(_class2.prototype, "add_provider"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "update_provider_value", [_dec4], Object.getOwnPropertyDescriptor(_class2.prototype, "update_provider_value"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "add_provider_data", [_dec5], Object.getOwnPropertyDescriptor(_class2.prototype, "add_provider_data"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "remove_provider_data", [_dec6], Object.getOwnPropertyDescriptor(_class2.prototype, "remove_provider_data"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "process_query", [_dec7], Object.getOwnPropertyDescriptor(_class2.prototype, "process_query"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_provider", [_dec8], Object.getOwnPropertyDescriptor(_class2.prototype, "get_provider"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_provider_data", [_dec9], Object.getOwnPropertyDescriptor(_class2.prototype, "get_provider_data"), _class2.prototype), _class2)) || _class);
+  send_friend_request({
+    friend_id,
+    public_key,
+    encrypted_key
+  }) {
+    const from = predecessorAccountId();
+    const requestId = `${from}-${friend_id}`;
+
+    // Store request with encryption data
+    this.friendRequests.set(requestId, {
+      from,
+      to: friend_id,
+      publicKey: public_key,
+      encryptedKey: encrypted_key,
+      status: 'pending'
+    });
+    this.friendRequestKeys.push(requestId);
+  }
+  accept_friend_request({
+    from,
+    public_key,
+    encrypted_key
+  }) {
+    const to = predecessorAccountId();
+    const requestId = `${from}-${to}`;
+    const request = this.friendRequests.get(requestId);
+    if (!request || request.status !== 'pending') {
+      throw new Error('Invalid friend request');
+    }
+
+    // Update request status
+    request.status = 'accepted';
+    request.recipientKey = public_key;
+    request.recipientEncryptedKey = encrypted_key;
+    this.friendRequests.set(requestId, request);
+
+    // Store shared keys for both parties
+    if (!this.sharedKeys) {
+      this.sharedKeys = new LookupMap('sk');
+    }
+
+    // Store sender's key
+    let senderKeys = this.sharedKeys.get(from) || new Vector(`sk_${from}`);
+    senderKeys.push({
+      friendId: to,
+      encryptedKey: request.encryptedKey,
+      timestamp: Date.now()
+    });
+    this.sharedKeys.set(from, senderKeys);
+
+    // Store recipient's key
+    let recipientKeys = this.sharedKeys.get(to) || new Vector(`sk_${to}`);
+    recipientKeys.push({
+      friendId: from,
+      encryptedKey: encrypted_key,
+      timestamp: Date.now()
+    });
+    this.sharedKeys.set(to, recipientKeys);
+    log(`Friend request accepted: ${from} -> ${to}`);
+  }
+  store_encrypted_data({
+    encryptedData
+  }) {
+    const accountId = predecessorAccountId();
+    this.encryptedData.set(accountId, encryptedData);
+    log(`Stored encrypted data for ${accountId}`);
+  }
+  get_friend_data({
+    friendId
+  }) {
+    return this.encryptedData.get(friendId);
+  }
+  get_shared_keys({
+    accountId
+  }) {
+    const keys = this.sharedKeys.get(accountId);
+    return keys ? keys.toArray() : [];
+  }
+  get_pending_friend_requests({
+    accountId
+  }) {
+    const pendingRequests = [];
+    log(`Checking pending requests for ${accountId}`);
+
+    // iterate over all keys in the friendRequestKeys vector
+    const keys = this.friendRequestKeys.toArray();
+    log(`Found ${keys.length} total request keys`);
+    for (const key of keys) {
+      const request = this.friendRequests.get(key);
+      log(`Checking request ${key}: ${JSON.stringify(request)}`);
+
+      // check if the request is pending and for the specified account
+      if (request && request.to === accountId && request.status === 'pending') {
+        log(`Found pending request for ${accountId} from ${request.from}`);
+        pendingRequests.push(request);
+      }
+    }
+    log(`Returning ${pendingRequests.length} pending requests`);
+    return pendingRequests;
+  }
+  get_friends({
+    accountId
+  }) {
+    const friends = [];
+
+    // check all friend requests where this account is involved
+    for (const key of this.friendRequestKeys.toArray()) {
+      const request = this.friendRequests.get(key);
+      if (request && request.status === 'accepted') {
+        if (request.from === accountId) {
+          friends.push(request.to);
+        } else if (request.to === accountId) {
+          friends.push(request.from);
+        }
+      }
+    }
+    return friends;
+  }
+  get_outgoing_requests({
+    accountId
+  }) {
+    const outgoingRequests = [];
+    for (const key of this.friendRequestKeys.toArray()) {
+      const request = this.friendRequests.get(key);
+      if (request && request.from === accountId && request.status === 'pending') {
+        outgoingRequests.push(request);
+      }
+    }
+    return outgoingRequests;
+  }
+  remove_friend({
+    friendId
+  }) {
+    const accountId = predecessorAccountId();
+    const requestId1 = `${accountId}-${friendId}`;
+    const requestId2 = `${friendId}-${accountId}`;
+
+    // check both possible request combinations
+    const request1 = this.friendRequests.get(requestId1);
+    const request2 = this.friendRequests.get(requestId2);
+    if (request1?.status === 'accepted') {
+      request1.status = 'removed';
+      this.friendRequests.set(requestId1, request1);
+    } else if (request2?.status === 'accepted') {
+      request2.status = 'removed';
+      this.friendRequests.set(requestId2, request2);
+    } else {
+      throw new Error('Friend relationship not found');
+    }
+    log(`Friend removed: ${friendId}`);
+  }
+  debug_get_request({
+    requestId
+  }) {
+    return this.friendRequests.get(requestId);
+  }
+  debug_get_all_keys() {
+    return this.friendRequestKeys.toArray();
+  }
+  debug_get_contract_state() {
+    return {
+      friendRequestKeys: this.friendRequestKeys.toArray(),
+      pendingRequests: this.friendRequestKeys.toArray().map(key => ({
+        key,
+        request: this.friendRequests.get(key)
+      }))
+    };
+  }
+  clear_all_friend_data() {
+    // verify caller is the owner of their data
+    const caller = predecessorAccountId();
+    log(`Clearing all friend data for ${caller}`);
+
+    // clear friend requests
+    const requestKeys = this.friendRequestKeys.toArray();
+    for (const key of requestKeys) {
+      const request = this.friendRequests.get(key);
+      if (request && (request.from === caller || request.to === caller)) {
+        log(`Removing friend request: ${key}`);
+        this.friendRequests.remove(key);
+      }
+    }
+
+    // clear shared keys
+    this.sharedKeys.remove(caller);
+    log(`Removed shared keys for ${caller}`);
+
+    // clear encrypted data
+    this.encryptedData.remove(caller);
+    log(`Removed encrypted data for ${caller}`);
+    log(`Successfully cleared all data for ${caller}`);
+  }
+}, _applyDecoratedDescriptor(_class2.prototype, "init", [_dec2], Object.getOwnPropertyDescriptor(_class2.prototype, "init"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "add_provider", [_dec3], Object.getOwnPropertyDescriptor(_class2.prototype, "add_provider"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "update_provider_value", [_dec4], Object.getOwnPropertyDescriptor(_class2.prototype, "update_provider_value"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "add_provider_data", [_dec5], Object.getOwnPropertyDescriptor(_class2.prototype, "add_provider_data"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "remove_provider_data", [_dec6], Object.getOwnPropertyDescriptor(_class2.prototype, "remove_provider_data"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "process_query", [_dec7], Object.getOwnPropertyDescriptor(_class2.prototype, "process_query"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_provider", [_dec8], Object.getOwnPropertyDescriptor(_class2.prototype, "get_provider"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_provider_data", [_dec9], Object.getOwnPropertyDescriptor(_class2.prototype, "get_provider_data"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "send_friend_request", [_dec10], Object.getOwnPropertyDescriptor(_class2.prototype, "send_friend_request"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "accept_friend_request", [_dec11], Object.getOwnPropertyDescriptor(_class2.prototype, "accept_friend_request"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "store_encrypted_data", [_dec12], Object.getOwnPropertyDescriptor(_class2.prototype, "store_encrypted_data"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_friend_data", [_dec13], Object.getOwnPropertyDescriptor(_class2.prototype, "get_friend_data"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_shared_keys", [_dec14], Object.getOwnPropertyDescriptor(_class2.prototype, "get_shared_keys"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_pending_friend_requests", [_dec15], Object.getOwnPropertyDescriptor(_class2.prototype, "get_pending_friend_requests"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_friends", [_dec16], Object.getOwnPropertyDescriptor(_class2.prototype, "get_friends"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_outgoing_requests", [_dec17], Object.getOwnPropertyDescriptor(_class2.prototype, "get_outgoing_requests"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "remove_friend", [_dec18], Object.getOwnPropertyDescriptor(_class2.prototype, "remove_friend"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "debug_get_request", [_dec19], Object.getOwnPropertyDescriptor(_class2.prototype, "debug_get_request"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "debug_get_all_keys", [_dec20], Object.getOwnPropertyDescriptor(_class2.prototype, "debug_get_all_keys"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "debug_get_contract_state", [_dec21], Object.getOwnPropertyDescriptor(_class2.prototype, "debug_get_contract_state"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "clear_all_friend_data", [_dec22], Object.getOwnPropertyDescriptor(_class2.prototype, "clear_all_friend_data"), _class2.prototype), _class2)) || _class);
+function clear_all_friend_data() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.clear_all_friend_data(_args);
+  DataProviderContract._saveToStorage(_contract);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function debug_get_contract_state() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.debug_get_contract_state(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function debug_get_all_keys() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.debug_get_all_keys(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function debug_get_request() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.debug_get_request(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function remove_friend() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.remove_friend(_args);
+  DataProviderContract._saveToStorage(_contract);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function get_outgoing_requests() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.get_outgoing_requests(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function get_friends() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.get_friends(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function get_pending_friend_requests() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.get_pending_friend_requests(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function get_shared_keys() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.get_shared_keys(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function get_friend_data() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.get_friend_data(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function store_encrypted_data() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.store_encrypted_data(_args);
+  DataProviderContract._saveToStorage(_contract);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function accept_friend_request() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.accept_friend_request(_args);
+  DataProviderContract._saveToStorage(_contract);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
+function send_friend_request() {
+  const _state = DataProviderContract._getState();
+  if (!_state && DataProviderContract._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+  const _contract = DataProviderContract._create();
+  if (_state) {
+    DataProviderContract._reconstruct(_contract, _state);
+  }
+  const _args = DataProviderContract._getArgs();
+  const _result = _contract.send_friend_request(_args);
+  DataProviderContract._saveToStorage(_contract);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
+}
 function get_provider_data() {
   const _state = DataProviderContract._getState();
   if (!_state && DataProviderContract._requireInit()) {
@@ -3244,5 +3614,5 @@ function init() {
   if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(DataProviderContract._serialize(_result, true));
 }
 
-export { add_provider, add_provider_data, get_provider, get_provider_data, init, process_query, remove_provider_data, update_provider_value };
+export { accept_friend_request, add_provider, add_provider_data, clear_all_friend_data, debug_get_all_keys, debug_get_contract_state, debug_get_request, get_friend_data, get_friends, get_outgoing_requests, get_pending_friend_requests, get_provider, get_provider_data, get_shared_keys, init, process_query, remove_friend, remove_provider_data, send_friend_request, store_encrypted_data, update_provider_value };
 //# sourceMappingURL=hello_near.js.map

@@ -7,7 +7,7 @@ import {
     prebuiltAppConfig,
 } from '@mlc-ai/web-llm';
 import { pipeline, env, FeatureExtractionPipeline } from '@xenova/transformers';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 // import GoogleAuth from './utils/GoogleAuth';
 import { formatGoogleData } from '@/utils/formatGoogleData';
 // import { useGoogleData } from './hooks/useGoogleData';
@@ -21,6 +21,9 @@ import type { Message } from '@/components/Chat';
 import type { GroupProgress } from '@/components/RAGStatusPanel';
 import NotesPanel from '@/components/NotesPanel';
 import { useNotes } from '@/hooks/useNotes';
+import { EncryptionManager } from '@/utils/encryption';
+import FriendManager from '@/components/FriendManager';
+import { NearContext } from '@wallets';
 
 type ProgressState = {
     progress: number;
@@ -53,8 +56,9 @@ interface SearchResult {
 }
 
 export default function Home() {
-    const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
+    //const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
     // const selectedModel = 'Phi-3.5-vision-instruct-q4f16_1-MLC';
+    const selectedModel = 'snowflake-arctic-embed-s-q0f32-MLC-b4';
     const appConfig = prebuiltAppConfig;
     appConfig.useIndexedDBCache = true;
 
@@ -86,6 +90,8 @@ export default function Home() {
         embeddingModelRef, 
         setRagGroups 
     });
+
+    const { wallet } = useContext(NearContext);
 
     const initProgressCallback = (progressData: InitProgressReport) => {
         setProgress((prev) => {
@@ -483,11 +489,52 @@ export default function Home() {
         setPrompt('');
     };
 
-    const handleGoogleData = (calendar: any, emails: any) => {
-        setGoogleData({
-            calendar,
-            emails,
-        });
+    const handleGoogleData = async (calendar: any[], emails: any[]) => {
+        try {
+            const encryptionManager = new EncryptionManager();
+            await encryptionManager.initialize();
+            await encryptionManager.loadStoredKeys();
+
+            // get current user's account id
+            const accountId = await wallet.selector.then(selector => 
+                selector.store.getState().accounts[0]?.accountId
+            );
+            
+            if (!accountId) {
+                throw new Error('not logged in');
+            }
+
+            // Sanitize the data before encryption
+            const sanitizedData = {
+                calendar: calendar.map(event => ({
+                    id: event.id,
+                    summary: event.summary,
+                    description: event.description,
+                    start: event.start,
+                    end: event.end,
+                    location: event.location
+                })),
+                emails: emails.map(email => ({
+                    id: email.id,
+                    subject: email.subject,
+                    snippet: email.snippet,
+                    date: email.date
+                }))
+            };
+
+            // encrypt with our own key, passing isOwnData flag
+            const encryptedData = await encryptionManager.encryptData(sanitizedData, accountId, true);
+
+            // Store encrypted data on chain
+            await wallet.callMethod({
+                contractId: "iseehorses.testnet",
+                method: 'store_encrypted_data',
+                args: { encryptedData }
+            });
+        } catch (error) {
+            console.error('Error handling Google data:', error);
+            throw error;
+        }
     };
 
     return (
@@ -576,6 +623,7 @@ export default function Home() {
 
                     {}
                     <div className="w-80 space-y-4">
+                        <FriendManager />
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />
                         <NotesPanel 

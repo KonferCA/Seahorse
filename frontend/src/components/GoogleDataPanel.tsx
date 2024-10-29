@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import Image from 'next/image';
 import googleIcon from '@/components/icons/google.svg';
+import { formatGoogleData } from '@/utils/formatGoogleData';
 
 type GoogleDataPanelProps = {
     onDataReceived: (calendar: any[], emails: any[]) => void;
@@ -10,12 +11,17 @@ type GoogleDataPanelProps = {
 export default function GoogleDataPanel({ onDataReceived }: GoogleDataPanelProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [ragProgress, setRagProgress] = useState({ completed: 0, total: 0 });
 
     const login = useGoogleLogin({
         onSuccess: (tokenResponse) => {
             fetchUserData(tokenResponse.access_token);
         },
         scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly',
+        onError: (errorResponse) => {
+            setError('Failed to connect to Google');
+            console.error('Google login error:', errorResponse);
+        }
     });
 
     const fetchUserData = async (accessToken: string) => {
@@ -29,13 +35,12 @@ export default function GoogleDataPanel({ onDataReceived }: GoogleDataPanelProps
                 },
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                onDataReceived(data.calendar, data.emails);
-            } else {
-                const errorData = await response.json();
-                setError(errorData.error || 'Failed to fetch data');
+            if (!response.ok) {
+                throw new Error('Failed to fetch data');
             }
+
+            const data = await response.json();
+            onDataReceived(data.calendar, data.emails);
         } catch (error) {
             setError('Error connecting to Google services');
             console.error('Error fetching user data:', error);
@@ -70,6 +75,20 @@ export default function GoogleDataPanel({ onDataReceived }: GoogleDataPanelProps
                     {isLoading ? 'Connecting...' : 'Connect Google Account'}
                 </span>
             </button>
+
+            {ragProgress.total > 0 && (
+                <div className="mt-3">
+                    <div className="text-sm text-gray-600">
+                        Processing data: {ragProgress.completed}/{ragProgress.total}
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+                        <div 
+                            className="bg-blue-600 h-2.5 rounded-full" 
+                            style={{ width: `${(ragProgress.completed / ragProgress.total) * 100}%` }}
+                        ></div>
+                    </div>
+                </div>
+            )}
 
             {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
         </div>

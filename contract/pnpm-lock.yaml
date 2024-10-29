@@ -19,7 +19,7 @@ importers:
         specifier: ^3.5.0
         version: 3.5.0
       typescript:
-        specifier: ^5.6.3
+        specifier: ^5.4.5
         version: 5.6.3
 
 packages:
@@ -2365,7 +2365,7 @@ snapshots:
 
   '@types/semver@7.5.8': {}
 
-  '@typescript-eslint/eslint-plugin@5.62.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.6.3))(eslint@8.57.1)(typescript@4.7.4)':
+  '@typescript-eslint/eslint-plugin@5.62.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@4.7.4))(eslint@8.57.1)(typescript@4.7.4)':
     dependencies:
       '@eslint-community/regexpp': 4.11.1
       '@typescript-eslint/parser': 5.62.0(eslint@8.57.1)(typescript@4.7.4)
@@ -3353,7 +3353,7 @@ snapshots:
       '@rollup/plugin-node-resolve': 13.3.0(rollup@2.79.2)
       '@scure/base': 1.1.9
       '@types/estree': 1.0.6
-      '@typescript-eslint/eslint-plugin': 5.62.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.6.3))(eslint@8.57.1)(typescript@4.7.4)
+      '@typescript-eslint/eslint-plugin': 5.62.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@4.7.4))(eslint@8.57.1)(typescript@4.7.4)
       '@typescript-eslint/parser': 5.62.0(eslint@8.57.1)(typescript@4.7.4)
       commander: 9.5.0
       eslint: 8.57.1
