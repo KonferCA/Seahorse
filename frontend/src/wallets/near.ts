@@ -15,8 +15,8 @@ import { setupSender } from '@near-wallet-selector/sender';
 import { setupBitteWallet } from '@near-wallet-selector/bitte-wallet';
 
 // ethereum wallets
-import { wagmiConfig, web3Modal } from '@wallets';
-import { setupEthereumWallets } from "@near-wallet-selector/ethereum-wallets";
+// import { wagmiConfig, web3Modal } from '@wallets';
+// import { setupEthereumWallets } from "@near-wallet-selector/ethereum-wallets";
 
 const THIRTY_TGAS = '30000000000000';
 const NO_DEPOSIT = '0';
@@ -39,28 +39,32 @@ export class Wallet {
     /**
      * To be called when the website loads
      * @param {Function} accountChangeHook - a function that is called when the user signs in or out#
-     * @returns {Promise<string>} - the accountId of the signed-in user 
+     * @returns {Promise<string>} - the accountId of the signed-in user
      */
     startUp = async (accountChangeHook) => {
         this.selector = setupWalletSelector({
             network: this.networkId,
-                modules: [
-                    setupMyNearWallet(),
-                    setupHereWallet(),
-                    setupLedger(),
-                    setupMeteorWallet(),
-                    setupSender(),
-                    setupBitteWallet(),
-                    setupEthereumWallets({ wagmiConfig, web3Modal, alwaysOnboardDuringSignIn: true }),
-                ],
+            modules: [
+                setupMyNearWallet(),
+                setupHereWallet(),
+                setupLedger(),
+                setupMeteorWallet(),
+                setupSender(),
+                setupBitteWallet(),
+                // setupEthereumWallets({ wagmiConfig, web3Modal, alwaysOnboardDuringSignIn: true }),
+            ],
         });
 
         const walletSelector = await this.selector;
         const isSignedIn = walletSelector.isSignedIn();
-        const accountId = isSignedIn ? walletSelector.store.getState().accounts[0].accountId : '';
+        const accountId = isSignedIn
+            ? walletSelector.store.getState().accounts[0].accountId
+            : '';
 
         walletSelector.store.observable.subscribe(async (state) => {
-            const signedAccount = state?.accounts.find(account => account.active)?.accountId;
+            const signedAccount = state?.accounts.find(
+                (account) => account.active
+            )?.accountId;
             accountChangeHook(signedAccount || '');
         });
 
@@ -71,7 +75,9 @@ export class Wallet {
      * Displays a modal to login the user
      */
     signIn = async () => {
-        const modal = setupModal(await this.selector, { contractId: this.createAccessKeyFor });
+        const modal = setupModal(await this.selector, {
+            contractId: this.createAccessKeyFor,
+        });
         modal.show();
     };
 
@@ -116,7 +122,13 @@ export class Wallet {
      * @param {string} options.deposit - the amount of yoctoNEAR to deposit
      * @returns {Promise<Transaction>} - the resulting transaction
      */
-    callMethod = async ({ contractId, method, args = {}, gas = THIRTY_TGAS, deposit = NO_DEPOSIT }) => {
+    callMethod = async ({
+        contractId,
+        method,
+        args = {},
+        gas = THIRTY_TGAS,
+        deposit = NO_DEPOSIT,
+    }) => {
         // Sign a transaction with the "FunctionCall" action
         const selectedWallet = await (await this.selector).wallet();
         const outcome = await selectedWallet.signAndSendTransaction({
@@ -145,7 +157,9 @@ export class Wallet {
     getTransactionResult = async (txhash) => {
         const walletSelector = await this.selector;
         const { network } = walletSelector.options;
-        const provider = new providers.JsonRpcProvider({ url: network.nodeUrl });
+        const provider = new providers.JsonRpcProvider({
+            url: network.nodeUrl,
+        });
 
         // Retrieve transaction result from the network
         const transaction = await provider.txStatus(txhash, 'unnused');
@@ -156,12 +170,14 @@ export class Wallet {
      * Gets the balance of an account
      * @param {string} accountId - the account id to get the balance of
      * @returns {Promise<number>} - the balance of the account
-     *  
+     *
      */
     getBalance = async (accountId) => {
         const walletSelector = await this.selector;
         const { network } = walletSelector.options;
-        const provider = new providers.JsonRpcProvider({ url: network.nodeUrl });
+        const provider = new providers.JsonRpcProvider({
+            url: network.nodeUrl,
+        });
 
         // Retrieve account state from the network
         const account = await provider.query({
@@ -171,14 +187,16 @@ export class Wallet {
         });
 
         // return amount on NEAR
-        return account.amount ? Number(utils.format.formatNearAmount(account.amount)) : 0;
+        return account.amount
+            ? Number(utils.format.formatNearAmount(account.amount))
+            : 0;
     };
 
     /**
      * Signs and sends transactions
      * @param {Object[]} transactions - the transactions to sign and send
      * @returns {Promise<Transaction[]>} - the resulting transactions
-     * 
+     *
      */
     signAndSendTransactions = async ({ transactions }) => {
         const selectedWallet = await (await this.selector).wallet();
@@ -186,14 +204,16 @@ export class Wallet {
     };
 
     /**
-     * 
+     *
      * @param {string} accountId
      * @returns {Promise<Object[]>} - the access keys for the
      */
     getAccessKeys = async (accountId) => {
         const walletSelector = await this.selector;
         const { network } = walletSelector.options;
-        const provider = new providers.JsonRpcProvider({ url: network.nodeUrl });
+        const provider = new providers.JsonRpcProvider({
+            url: network.nodeUrl,
+        });
 
         // Retrieve account state from the network
         const keys = await provider.query({
