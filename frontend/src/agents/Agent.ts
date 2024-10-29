@@ -21,12 +21,25 @@ export class Agent {
     private voyClient: VoyClient | null = null;
     private llm: ChatWebLLM | null = null;
     private ragChain: RunnableSequence | null = null;
+    private defaultChain: RunnableSequence | null = null;
+    protected modelName: string;
+    protected embeddingModelName: string;
+    private isVectorStoreEmpty: boolean = true;
+
+    constructor(modelName: string, embeddingModelName?: string) {
+        this.modelName = modelName;
+        if (!embeddingModelName) {
+            // use this model for more accurate results with speed tradeoff.
+            this.embeddingModelName = 'nomic-ai/nomic-embed-text-v1';
+            // this.embeddingModelName = 'Xenova/all-MiniLM-L6-v2';
+        } else {
+            this.embeddingModelName = embeddingModelName;
+        }
+    }
 
     async initialize(progressCallback: InitProgressCallback) {
         this.embeddings = new HuggingFaceTransformersEmbeddings({
-            // use this model if speed is preferred over accuracy
-            modelName: 'Xenova/all-MiniLM-L6-v2',
-            // modelName: 'nomic-ai/nomic-embed-text-v1',
+            modelName: this.embeddingModelName,
         });
         this.textSplitter = new RecursiveCharacterTextSplitter({
             chunkSize: 500,
@@ -35,7 +48,7 @@ export class Agent {
         this.voyClient = new VoyClient();
         this.vectorStore = new VoyVectorStore(this.voyClient, this.embeddings);
         this.llm = new ChatWebLLM({
-            model: 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k',
+            model: this.modelName,
             appConfig: {
                 ...prebuiltAppConfig,
                 useIndexedDBCache: true,
@@ -48,7 +61,7 @@ export class Agent {
         // Create RAG prompt template
         const prompt = ChatPromptTemplate.fromMessages([
             SystemMessagePromptTemplate.fromTemplate(
-                "You are a helpful AI assistant. Use the following context to answer the user's question.\n\nContext: {context}"
+                "You are a helpful AI assistant. Use the following context to answer the user's question.\n\nContext: {context}\n\nLimit your answers to maximum of 50 words."
             ),
             HumanMessagePromptTemplate.fromTemplate('{question}'),
         ]);
@@ -63,6 +76,24 @@ export class Agent {
                 question: (input: { question: string }) => input.question,
             },
             prompt,
+            this.llm,
+            new StringOutputParser(),
+        ]);
+
+        // Create default prompt template for when no context is available
+        const defaultPrompt = ChatPromptTemplate.fromMessages([
+            SystemMessagePromptTemplate.fromTemplate(
+                "You are a helpful AI assistant. Please answer the user's question to the best of your ability. Limit your answers to maximum of 50 words."
+            ),
+            HumanMessagePromptTemplate.fromTemplate('{question}'),
+        ]);
+
+        // Create default chain, use for when there is nothing in the RAG chain.
+        this.defaultChain = RunnableSequence.from([
+            {
+                question: (input: { question: string }) => input.question,
+            },
+            defaultPrompt,
             this.llm,
             new StringOutputParser(),
         ]);
@@ -82,6 +113,7 @@ export class Agent {
             if (this.vectorStore !== null) {
                 await this.vectorStore.addDocuments(documents);
             }
+            this.isVectorStoreEmpty = false;
             return documents.length;
         } catch (error) {
             throw new Error(
@@ -91,18 +123,31 @@ export class Agent {
     }
 
     async searchSimilar(query: string, k: number) {
-        if (!this.vectorStore) {
-            throw new Error('No documents have been embedded yet');
+        // if (!this.vectorStore) {
+        //     throw new Error('No documents have been embedded yet');
+        // }
+        if (this.isVectorStoreEmpty) return [];
+        try {
+            const results = await this.vectorStore!.similaritySearch(query, k);
+            return results;
+        } catch (error) {
+            console.log(error);
         }
-        return this.vectorStore.similaritySearch(query, k);
+        return [];
     }
 
     async generateResponse(query: string): Promise<string> {
         try {
-            const response = await this.ragChain!.invoke({
+            const docs = await this.searchSimilar(query, 10);
+            if (docs.length > 0) {
+                return await this.ragChain!.invoke({
+                    question: query,
+                });
+            }
+
+            return await this.defaultChain!.invoke({
                 question: query,
             });
-            return response;
         } catch (error) {
             throw new Error(
                 `Failed to generate response: ${(error as Error).message}`
