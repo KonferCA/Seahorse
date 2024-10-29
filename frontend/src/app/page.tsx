@@ -1,4 +1,5 @@
 'use client';
+
 import {
     CreateMLCEngine,
     InitProgressReport,
@@ -8,16 +9,16 @@ import {
 import { pipeline, env, FeatureExtractionPipeline } from '@xenova/transformers';
 import { useEffect, useRef, useState } from 'react';
 // import GoogleAuth from './utils/GoogleAuth';
-import { formatGoogleData } from './utils/formatGoogleData';
+import { formatGoogleData } from '@/utils/formatGoogleData';
 // import { useGoogleData } from './hooks/useGoogleData';
-import NearAuthGate from './components/NearAuthGate';
-import { essay } from './data/essay';
-import RAGStatusPanel from './components/RAGStatusPanel';
-import GoogleDataPanel from './components/GoogleDataPanel';
-import Chat from './components/Chat';
+import NearAuthGate from '@/components/NearAuthGate';
+import { essay } from '@/data/essay';
+import RAGStatusPanel from '@/components/RAGStatusPanel';
+import GoogleDataPanel from '@/components/GoogleDataPanel';
+import Chat from '@/components/Chat';
 import { VectorStore } from '@/services';
-import type { Message } from '@/app/components/Chat';
-import type { GroupProgress } from '@/app/components/RAGStatusPanel';
+import type { Message } from '@/components/Chat';
+import type { GroupProgress } from '@/components/RAGStatusPanel';
 
 type ProgressState = {
     progress: number;
