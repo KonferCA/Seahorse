@@ -30,6 +30,7 @@ type RAGItem = {
 
 export default function Home() {
     const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
+    // const selectedModel = 'Phi-3.5-vision-instruct-q4f16_1-MLC';
     const [prompt, setPrompt] = useState('');
     const [progress, setProgress] = useState<ProgressState>({
         progress: 0,
@@ -78,111 +79,97 @@ export default function Home() {
         create();
     }, []);
 
-    // useEffect(() => {
-    // const processGoogleData = async () => {
-    // if (!agentRef.current || !googleData) return;
-    //
-    // if (
-    //     googleData.calendar.length > 0 ||
-    //     googleData.emails.length > 0
-    // ) {
-    //     setRagGroups((prev: any) => {
-    //         const existingDocumentGroup = prev.find(
-    //             (g: any) => g.type === 'document'
-    //         );
-    //         const newGroups = [
-    //             {
-    //                 type: 'email',
-    //                 total: googleData.emails.length,
-    //                 completed: 0,
-    //                 error: 0,
-    //                 inProgress: 0,
-    //             },
-    //             {
-    //                 type: 'calendar',
-    //                 total: googleData.calendar.length,
-    //                 completed: 0,
-    //                 error: 0,
-    //                 inProgress: 0,
-    //             },
-    //         ];
-    //
-    //         return existingDocumentGroup
-    //             ? [...newGroups, existingDocumentGroup]
-    //             : newGroups;
-    //     });
-    //
-    //     const formattedItems = formatGoogleData(
-    //         googleData.calendar,
-    //         googleData.emails
-    //     );
-    //
-    //     for (const item of formattedItems) {
-    //         setRagGroups((prev) =>
-    //             prev.map((group) =>
-    //                 group.type === item.type
-    //                     ? { ...group, inProgress: group.inProgress + 1 }
-    //                     : group
-    //             )
-    //         );
-    //
-    //         try {
-    //             const docId = await vectorStoreRef.current.addDocument(
-    //                 item.content,
-    //                 {
-    //                     ...item.metadata,
-    //                     filename: `${item.type}_${item.metadata[`${item.type}Id`]}.txt`,
-    //                     type: 'text/plain',
-    //                 }
-    //             );
-    //
-    //             const embedding = await embeddingModelRef.current(
-    //                 item.content,
-    //                 {
-    //                     pooling: 'mean',
-    //                     normalize: true,
-    //                 }
-    //             );
-    //
-    //             await vectorStoreRef.current.addEmbedding(
-    //                 Array.from(embedding.data),
-    //                 docId
-    //             );
-    //
-    //             setRagGroups((prev) =>
-    //                 prev.map((group) =>
-    //                     group.type === item.type
-    //                         ? {
-    //                             ...group,
-    //                             completed: group.completed + 1,
-    //                             inProgress: group.inProgress - 1,
-    //                         }
-    //                         : group
-    //                 )
-    //             );
-    //         } catch (error) {
-    //             setRagGroups((prev) =>
-    //                 prev.map((group) =>
-    //                     group.type === item.type
-    //                         ? {
-    //                             ...group,
-    //                             error: group.error + 1,
-    //                             inProgress: group.inProgress - 1,
-    //                         }
-    //                         : group
-    //                 )
-    //             );
-    //             console.error(
-    //                 `Error processing ${item.type} item:`,
-    //                 error
-    //             );
-    //         }
-    //     }
-    // }
-    // };
+    useEffect(() => {
+        const processGoogleData = async () => {
+            if (!agentRef.current || !googleData) return;
 
-    // processGoogleData();
-    // }, [googleData]);
+            if (
+                googleData.calendar.length > 0 ||
+                googleData.emails.length > 0
+            ) {
+                // setRagGroups((prev: any) => {
+                //     const existingDocumentGroup = prev.find(
+                //         (g: any) => g.type === 'document'
+                //     );
+                //     const newGroups = [
+                //         {
+                //             type: 'email',
+                //             total: googleData.emails.length,
+                //             completed: 0,
+                //             error: 0,
+                //             inProgress: 0,
+                //         },
+                //         {
+                //             type: 'calendar',
+                //             total: googleData.calendar.length,
+                //             completed: 0,
+                //             error: 0,
+                //             inProgress: 0,
+                //         },
+                //     ];
+                //
+                //     return existingDocumentGroup
+                //         ? [...newGroups, existingDocumentGroup]
+                //         : newGroups;
+                // });
+
+                const formattedItems = formatGoogleData(
+                    googleData.calendar,
+                    googleData.emails
+                );
+
+                console.log(formattedItems.map((item) => item.content));
+
+                console.log('embedding gmail and calendar');
+                await agentRef.current.embedTexts(
+                    formattedItems.map((item) => item.content)
+                );
+                console.log('embedded gmail and calendar');
+
+                // for (const item of formattedItems) {
+                // setRagGroups((prev) =>
+                //     prev.map((group) =>
+                //         group.type === item.type
+                //             ? { ...group, inProgress: group.inProgress + 1 }
+                //             : group
+                //     )
+                // );
+
+                // try {
+                // setRagGroups((prev) =>
+                //     prev.map((group) =>
+                //         group.type === item.type
+                //             ? {
+                //                 ...group,
+                //                 completed: group.completed + 1,
+                //                 inProgress: group.inProgress - 1,
+                //             }
+                //             : group
+                //     )
+                // );
+                //     } catch (error) {
+                //         setRagGroups((prev) =>
+                //             prev.map((group) =>
+                //                 group.type === item.type
+                //                     ? {
+                //                         ...group,
+                //                         error: group.error + 1,
+                //                         inProgress: group.inProgress - 1,
+                //                     }
+                //                     : group
+                //             )
+                //         );
+                //         console.error(
+                //             `Error processing ${item.type} item:`,
+                //             error
+                //         );
+                //     }
+                // }
+            }
+        };
+
+        processGoogleData();
+    }, [googleData]);
 
     const query = async () => {
         if (!agentRef.current) return;

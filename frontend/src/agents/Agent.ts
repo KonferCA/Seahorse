@@ -30,8 +30,9 @@ export class Agent {
         this.modelName = modelName;
         if (!embeddingModelName) {
             // use this model for more accurate results with speed tradeoff.
-            this.embeddingModelName = 'nomic-ai/nomic-embed-text-v1';
-            // this.embeddingModelName = 'Xenova/all-MiniLM-L6-v2';
+            // this.embeddingModelName = 'nomic-ai/nomic-embed-text-v1';
+            this.embeddingModelName = 'Xenova/all-MiniLM-L6-v2';
+            // this.embeddingModelName = 'snowflake-arctic-embed-s-q0f32-MLC-b4';
         } else {
             this.embeddingModelName = embeddingModelName;
         }
@@ -54,6 +55,9 @@ export class Agent {
                 useIndexedDBCache: true,
             },
             maxRetries: 10,
+            chatOptions: {
+                context_window_size: 2048,
+            },
         });
         // await this.llm.reload('Phi-3.5-mini-instruct-q4f16_1-MLC-1k');
         await this.llm.initialize(progressCallback);
@@ -71,6 +75,8 @@ export class Agent {
             {
                 context: async (input: { question: string }) => {
                     const docs = await this.searchSimilar(input.question, 10);
+                    docs.forEach((doc) => console.log(doc.pageContent));
+                    // console.log(formatDocumentsAsString(docs));
                     return formatDocumentsAsString(docs);
                 },
                 question: (input: { question: string }) => input.question,
