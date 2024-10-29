@@ -19,6 +19,8 @@ import Chat from '@/components/Chat';
 import { VectorStore } from '@/services';
 import type { Message } from '@/components/Chat';
 import type { GroupProgress } from '@/components/RAGStatusPanel';
+import NotesPanel from '@/components/NotesPanel';
+import { useNotes } from '@/hooks/useNotes';
 
 type ProgressState = {
     progress: number;
@@ -30,7 +32,7 @@ type ProgressState = {
 
 type RAGItem = {
     id: string;
-    type: 'email' | 'calendar' | 'document';
+    type: 'email' | 'calendar' | 'document' | 'note';
     title: string;
     status: 'pending' | 'embedding' | 'completed' | 'error';
     timestamp: number;
@@ -38,6 +40,17 @@ type RAGItem = {
 
 env.useBrowserCache = true;
 env.allowLocalModels = false;
+
+// add interface for search results
+interface SearchResult {
+    chunk: string;
+    score: number;
+    metadata: {
+        type: string;
+        title?: string;
+        [key: string]: any;
+    };
+}
 
 export default function Home() {
     const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
@@ -66,6 +79,13 @@ export default function Home() {
     const vectorStoreRef = useRef<VectorStore>(new VectorStore());
     const [ragItems, setRagItems] = useState<RAGItem[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
+
+    const { notes, saveNote } = useNotes({ 
+        engineRef, 
+        vectorStoreRef, 
+        embeddingModelRef, 
+        setRagGroups 
+    });
 
     const initProgressCallback = (progressData: InitProgressReport) => {
         setProgress((prev) => {
@@ -426,7 +446,7 @@ export default function Home() {
             4
         );
 
-        const contextMessages = results.map((r) => ({
+        const contextMessages = results.map((r: SearchResult) => ({
             role: 'context' as const,
             content: r.chunk,
             timestamp: new Date(),
@@ -439,7 +459,7 @@ export default function Home() {
 
         setMessages((prev) => [...prev, ...contextMessages]);
 
-        let context = results.map((r) => r.chunk).join('\n');
+        let context = results.map((r: SearchResult) => r.chunk).join('\n');
 
         const reply = await engineRef.current.chat.completions.create({
             messages: [
@@ -558,6 +578,13 @@ export default function Home() {
                     <div className="w-80 space-y-4">
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />
+                        <NotesPanel 
+                            notes={notes} 
+                            onSave={async (updatedNote) => {
+                                // TODO: Implement note updating logic
+                                console.log('Note updated:', updatedNote);
+                            }} 
+                        />
                     </div>
                 </div>
             </div>

@@ -1,5 +1,7 @@
+import { useState } from 'react';
+
 export type GroupProgress = {
-    type: 'email' | 'calendar' | 'document';
+    type: 'email' | 'calendar' | 'document' | 'note';
     total: number;
     completed: number;
     error: number;
@@ -10,6 +12,7 @@ const typeEmojis = {
     email: '📧',
     calendar: '📅',
     document: '📄',
+    note: '📝'
 };
 
 type RAGStatusPanelProps = {
@@ -40,8 +43,9 @@ export default function RAGStatusPanel({ groups }: RAGStatusPanelProps) {
                         {/* progress bar */}
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                             <div
-                                className={`h-full transition-all duration-500 ${hasErrors ? 'bg-red-400' : 'bg-sky-400'
-                                    }`}
+                                className={`h-full transition-all duration-500 ${
+                                    hasErrors ? 'bg-red-400' : 'bg-sky-400'
+                                }`}
                                 style={{ width: `${progress}%` }}
                             />
                         </div>
