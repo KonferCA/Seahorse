@@ -1,3 +1,1 @@
-import { VectorStore } from '@/services/VectorStore';
-
-export { VectorStore };
+export { VectorStore } from './VectorStore';

@@ -6,6 +6,10 @@ interface Note {
   title: string;
   content: string;
   timestamp: number;
+  ragData?: {
+    docId: number;
+    embedding: number[];
+  };
 }
 
 interface NotesPanelProps {
