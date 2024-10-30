@@ -13,6 +13,8 @@ import {
     SystemMessagePromptTemplate,
 } from '@langchain/core/prompts';
 import { InitProgressCallback, prebuiltAppConfig } from '@mlc-ai/web-llm';
+import { Wallet } from '@/wallets';
+import { NetworkId } from '@/config';
 
 export class Agent {
     private vectorStore: VoyVectorStore | null = null;
@@ -26,6 +28,7 @@ export class Agent {
     protected embeddingModelName: string;
     private isVectorStoreEmpty: boolean = true;
     private onToken?: (token: string) => void;
+    private wallet: Wallet | null = null;
 
     constructor(modelName: string, embeddingModelName?: string) {
         this.modelName = modelName;
@@ -36,6 +39,44 @@ export class Agent {
             // this.embeddingModelName = 'snowflake-arctic-embed-s-q0f32-MLC-b4';
         } else {
             this.embeddingModelName = embeddingModelName;
+        }
+
+        this.wallet = new Wallet({ 
+            networkId: NetworkId, 
+            createAccessKeyFor: 'contract1.iseahorse.testnet' 
+        });
+    }
+
+    private async fetchAllProviderData(): Promise<string[]> {
+        if (!this.wallet) return [];
+
+        try {
+            // get all providers
+            const providers = await this.wallet.viewMethod({
+                contractId: 'contract1.iseahorse.testnet',
+                method: 'get_all_providers',
+                args: {}
+            });
+
+            // fetch data for each provider
+            const allData: string[] = [];
+            for (const provider of providers) {
+                const data = await this.wallet.viewMethod({
+                    contractId: 'contract1.iseahorse.testnet',
+                    method: 'get_provider_data',
+                    args: { providerId: provider.id }
+                });
+
+                // format each data item with provider context
+                data.forEach((item: { content: string }) => {
+                    allData.push(`provider: ${provider.name} (id: ${provider.id})\ncontent: ${item.content}`);
+                });
+            }
+
+            return allData;
+        } catch (error) {
+            console.error('Error fetching provider data:', error);
+            return [];
         }
     }
 
@@ -62,6 +103,17 @@ export class Agent {
         });
         // await this.llm.reload('Phi-3.5-mini-instruct-q4f16_1-MLC-1k');
         await this.llm.initialize(progressCallback);
+
+        progressCallback({ message: 'Loading provider data...', progress: 0.7 });
+        const providerData = await this.fetchAllProviderData();
+        
+        // add provider data to vectorstore
+        if (providerData.length > 0) {
+            const docs = providerData.map(content => 
+                new Document({ pageContent: content, metadata: { source: 'provider' } })
+            );
+            await this.vectorStore.addDocuments(docs);
+        }
 
         // Create RAG prompt template
         const prompt = ChatPromptTemplate.fromMessages([
