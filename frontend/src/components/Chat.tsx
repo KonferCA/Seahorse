@@ -1,5 +1,8 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef } from 'react';
+import { Prism as SyntaxHighligher } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import ReactMarkdown from 'react-markdown';
 
 export type Message = {
     role: 'user' | 'assistant' | 'context';
@@ -28,53 +31,67 @@ export function Chat({ messages, onSendMessage, isLoading }: ChatProps) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    const chatMessages = messages.filter(message => message.role !== 'context');
+
     return (
         <div className="flex flex-col space-y-4">
-            {messages.map((message, index) => (
+            {chatMessages.map((message, index) => (
                 <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${message.role === 'user'
-                        ? 'justify-end'
-                        : message.role === 'context'
-                            ? 'justify-center'
+                    className={`flex ${
+                        message.role === 'user' 
+                            ? 'justify-end' 
                             : 'justify-start'
-                        }`}
+                    }`}               
                 >
                     <div
-                        className={`max-w-[80%] p-4 rounded-lg ${message.role === 'user'
-                            ? 'bg-blue-500 text-white'
-                            : message.role === 'context'
-                                ? 'bg-gray-200 text-gray-600 border border-gray-300'
+                        className={`max-w-[80%] p-4 rounded-lg prose prose-sm ${
+                            message.role === 'user'
+                                ? 'bg-blue-500 text-white prose-invert'
                                 : 'bg-gray-100 text-gray-800'
-                            }`}
+                        }`}
                     >
-                        {message.role === 'context' && message.metadata && (
-                            <div className="flex items-center gap-2 mb-2 text-sm border-b border-gray-300 pb-2">
-                                <span className="font-medium">
-                                    {message.metadata.type === 'email' ? '📧'
-                                        : message.metadata.type === 'calendar' ? '📅'
-                                            : '📄'}
-                                    {message.metadata.title}
-                                </span>
-                                <span className="text-gray-500">
-                                    (Relevance: {(message.metadata.score * 100).toFixed(1)}%)
-                                </span>
-                            </div>
-                        )}
-                        <p className="text-sm whitespace-pre-wrap">
+                        <ReactMarkdown
+                            components={{
+                                code({node, inline, className, children, ...props}: {node: any, inline: boolean, className: string, children: React.ReactNode}) {
+                                    const match = /language-(\w+)/.exec(className || '');
+                                    
+                                    return !inline && match ? (
+                                        <SyntaxHighligher
+                                            style={oneDark}
+                                            language={match[1]}
+                                            PreTag="div"
+                                            {...props}
+                                        >
+                                            {String(children).replace(/\n$/, '')}
+                                        </SyntaxHighligher>
+                                    ) : (
+                                        <code className={className} {...props}>
+                                            {children}
+                                        </code>
+                                    );
+                                },
+                                p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
+                                h2: ({children}) => <h2 className="text-lg font-bold mb-2">{children}</h2>,
+                                h3: ({children}) => <h3 className="text-md font-bold mb-2">{children}</h3>,
+                            }}
+                        >
                             {message.content}
-                            {message.isStreaming && (
-                                <span className="inline-block w-1.5 h-4 ml-0.5 bg-gray-400 animate-pulse" />
-                            )}
-                        </p>
+                        </ReactMarkdown>
+
+                        {message.isStreaming && (
+                            <span className="inline-block w-1.5 h-4 ml-0.5 bg-gray-400 animate-pulse" />
+                        )}
+                        
                         <span className="text-xs opacity-70 mt-2 block">
                             {new Date(message.timestamp).toLocaleTimeString()}
                         </span>
                     </div>
                 </motion.div>
             ))}
+
             {isLoading && (
                 <motion.div
                     initial={{ opacity: 0 }}
