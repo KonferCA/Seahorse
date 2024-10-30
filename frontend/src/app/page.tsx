@@ -16,6 +16,7 @@ import NotesPanel from '@/components/NotesPanel';
 import { useNotes } from '@/hooks/useNotes';
 import { Agent } from '@/agents/Agent';
 import VoiceModal from '@/components/VoiceModal';
+import ContextPanel, { ContextItem } from '@/components/ContextPanel';
 
 type ProgressState = {
     progress: number;
@@ -43,8 +44,8 @@ interface SearchResult {
 }
 
 export default function Home() {
-    const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
-    // const selectedModel = 'Phi-3.5-vision-instruct-q4f16_1-MLC';
+    // const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
+    const selectedModel = 'Phi-3.5-vision-instruct-q4f16_1-MLC';
     const [prompt, setPrompt] = useState('');
     const [progress, setProgress] = useState<ProgressState>({
         progress: 0,
@@ -74,6 +75,8 @@ export default function Home() {
     const messageContentRef = useRef('');
 
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+
+    const [contextItems, setContextItems] = useState<ContextItem[]>([]);
 
     const handleStream = useCallback((token: string) => {
         setCurrentStreamingMessage(prev => prev + token);
@@ -207,6 +210,10 @@ export default function Home() {
         processGoogleData();
     }, [googleData]);
 
+    useEffect(() => {
+        console.log('Context items:', contextItems);
+    }, [contextItems]);
+
     const query = async () => {
         if (!prompt.trim() || !agentRef.current) return;
         
@@ -218,25 +225,28 @@ export default function Home() {
             // add user message
             setMessages(prev => [
                 ...prev,
-                { role: 'user', content: prompt, timestamp: new Date() }
+                { role: 'user', content: currentPrompt, timestamp: new Date() }
             ]);
             
             // get similar documents
-            const results = await agentRef.current.searchSimilar(prompt, 4);
+            const results = await agentRef.current.searchSimilar(currentPrompt, 4);
             
             // add context messages if any found
             if (results.length > 0) {
-                const contextMessages = results.map(doc => ({
-                    role: 'context' as const,
+                const newContextItems = results.map(doc => ({
+                    id: Math.random().toString(36).substring(2, 9),
+                    type: (doc.metadata.type || 'document') as 'email' | 'calendar' | 'document',
+                    title: doc.metadata.title || 'Untitled',
                     content: doc.pageContent,
                     timestamp: new Date(),
                     metadata: {
-                        type: doc.metadata.type || 'document',
                         score: doc.metadata.score || 0.8,
-                        title: doc.metadata.title || 'Untitled',
-                    },
+                    }
                 }));
-                setMessages(prev => [...prev, ...contextMessages]);
+
+                setContextItems(newContextItems);
+            } else {
+                setContextItems([]);
             }
 
             // add empty assistant message for streaming
@@ -264,7 +274,7 @@ export default function Home() {
             });
             
             // generate response
-            const response = await agentRef.current.generateResponse(prompt);
+            const response = await agentRef.current.generateResponse(currentPrompt);
             
             // update final message and remove streaming state
             setMessages(prev => {
@@ -412,6 +422,7 @@ export default function Home() {
                             onSave={saveNote}
                             onDelete={deleteNote}
                         />
+                        <ContextPanel items={contextItems} />
                     </div>
                 </div>
             </div>
