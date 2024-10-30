@@ -83,7 +83,7 @@ export const useNotes = ({ agent, setRagGroups }: UseNotesProps) => {
       const response = await agent.generateResponse(
         'create a 3-5 word title summarizing this note. respond with just the title.'
       );
-      return response || 'Untitled Note';
+      return (response || 'Untitled Note').replace(/"/g, '');
     } catch (error) {
       console.error('error generating title:', error);
       return 'Untitled Note';
