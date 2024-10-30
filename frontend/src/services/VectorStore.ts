@@ -71,29 +71,36 @@ export class VectorStore {
         return chunks;
     }
 
-    async addDocument(text: string, metadata = {}) {
+    async addDocuments(documents: Document[]) {
         if (!this.initialized) await this.initialize();
-
-        const chunks = this.chunkText(text);
-        const documents = await this.store.getItem<Document[]>('documents') || [];
-        const existingMetadata = await this.store.getItem<ChunkMetadata[]>('metadata') || [];
-
-        const docId = `doc_${documents.length}`;
-        documents.push({ text, metadata });
-
-        for (let i = 0; i < chunks.length; i++) {
-            existingMetadata.push({
-                chunk: chunks[i],
-                docId,
-                chunkIndex: i,
-                ...metadata,
-            });
+        
+        for (const doc of documents) {
+            const chunks = this.chunkText(doc.text);
+            const docId = `doc_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // store document metadata
+            const metadata = await this.store.getItem<ChunkMetadata[]>('metadata') || [];
+            
+            // embed each chunk
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                // get embedding for chunk
+                const embedding = await this.embeddings.embedQuery(chunk);
+                
+                // store embedding
+                await this.addEmbedding(embedding, docId);
+                
+                // store metadata
+                metadata.push({
+                    chunk,
+                    docId,
+                    chunkIndex: i,
+                    ...doc.metadata  // preserve original document metadata
+                });
+            }
+            
+            await this.store.setItem('metadata', metadata);
         }
-
-        await this.store.setItem('documents', documents);
-        await this.store.setItem('metadata', existingMetadata);
-        console.log(`Added document ${docId} with ${chunks.length} chunks`);
-        return docId;
     }
 
     async addEmbedding(embedding: number[], docId: string) {
@@ -123,10 +130,13 @@ export class VectorStore {
             ).length;
 
             const score = this.cosineSimilarity(queryVector, vector) * (1 + 0.1 * termOverlap);
-
+            console.log(`Score for chunk ${index}: ${score}`);
             return {
                 chunk,
-                metadata: metadata[index],
+                metadata: {
+                    ...metadata[index],
+                    score: score
+                },
                 score
             };
         });

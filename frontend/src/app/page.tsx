@@ -91,11 +91,9 @@ export default function Home() {
 
                 try {
                     const agent = new Agent(selectedModel);
-                    
-                    // wrap the progress callback to ensure continuity
-                    const progressWrapper = (update: any) => {
+                    await agent.initialize((update) => {
                         setProgress(prev => ({
-                            progress: Math.max(prev.progress, update.progress * 100), // prevent progress from going backwards
+                            progress: update.progress * 100,
                             text: update.message,
                             timeElapsed: prev.timeElapsed
                         }));
@@ -129,17 +127,8 @@ export default function Home() {
                                 return prev;
                             });
                         }
-                    };
-
-                    await agent.initialize(progressWrapper);
+                    });
                     agentRef.current = agent;
-                    
-                    // set final progress
-                    setProgress(prev => ({
-                        progress: 100,
-                        text: 'Ready',
-                        timeElapsed: prev.timeElapsed
-                    }));
                 } catch (error) {
                     console.error('Error initializing:', error);
                     setProgress({
@@ -264,11 +253,11 @@ export default function Home() {
             if (results.length > 0) {
                 const contextMessages = results.map(doc => ({
                     role: 'context' as const,
-                    content: doc.pageContent,
+                    content: doc.pageContent || doc.chunk || '',
                     timestamp: new Date(),
                     metadata: {
                         type: doc.metadata.type || 'document',
-                        score: doc.metadata.score || 0.8,
+                        score: doc.metadata.score,
                         title: doc.metadata.title || 'Untitled',
                     },
                 }));

@@ -69,6 +69,7 @@ export class Agent {
                 method: 'get_all_providers',
                 args: {}
             });
+            console.log('providers received:', providers);
 
             let totalItems = 0;
             // first pass to count total items
@@ -78,6 +79,7 @@ export class Agent {
                     method: 'get_provider_data',
                     args: { providerId: provider.id }
                 });
+                console.log('provider data received:', data);
                 totalItems += data.length;
             }
 
@@ -106,9 +108,21 @@ export class Agent {
                     method: 'get_provider_data',
                     args: { providerId: provider.id }
                 });
+                console.log('provider data received:', data);
 
                 data.forEach((item: { content: string }) => {
-                    allData.push(`provider: ${provider.name} (id: ${provider.id})\ncontent: ${item.content}`);
+                    console.log('processing item:', item);
+                    const doc = new Document({
+                        pageContent: item.content,
+                        metadata: {
+                            source: 'provider',
+                            providerId: provider.id,
+                            providerName: provider.name,
+                            type: 'document'
+                        }
+                    });
+                    console.log('created document:', doc);
+                    allData.push(doc);
                     processedItems++;
                     
                     if (progressCallback) {
@@ -125,6 +139,7 @@ export class Agent {
                 });
             }
 
+            console.log('final allData array:', allData);
             return allData;
         } catch (error) {
             console.error('Error fetching provider data:', error);
@@ -184,10 +199,8 @@ export class Agent {
             const providerData = await this.fetchAllProviderData(progressCallback);
             
             if (providerData.length > 0) {
-                const docs = providerData.map(content => 
-                    new Document({ pageContent: content, metadata: { source: 'provider' } })
-                );
-                await this.vectorStore.addDocuments(docs);
+                await this.vectorStore.addDocuments(providerData);
+                this.isVectorStoreEmpty = false;
             }
 
             // Initialize chains
@@ -268,13 +281,22 @@ export class Agent {
     }
 
     async searchSimilar(query: string, k: number) {
-        // if (!this.vectorStore) {
-        //     throw new Error('No documents have been embedded yet');
-        // }
         if (this.isVectorStoreEmpty) return [];
         try {
             const results = await this.vectorStore!.similaritySearch(query, k);
-            return results;
+            // transform results into proper Document objects with scores
+            return results.map(result => {
+                // ensure we have all required fields
+                if (!result.chunk) return null;
+                
+                return {
+                    pageContent: result.chunk,
+                    metadata: {
+                        ...result.metadata,
+                        score: result.score
+                    }
+                };
+            }).filter(Boolean); // remove any null results
         } catch (error) {
             console.log(error);
         }
@@ -290,7 +312,51 @@ export class Agent {
 
         try {
             const docs = await this.searchSimilar(question, 10);
+            
+            // process payouts if we have relevant documents
             if (docs.length > 0) {
+                // prepare relevancy data for contract
+                const providerScores: { [key: string]: number } = {};
+                
+                // get highest relevancy score for each provider
+                for (const doc of docs) {
+                    console.log('Processing doc:', doc); // debug
+                    if (doc.metadata?.providerId) {
+                        const providerId = doc.metadata.providerId;
+                        // ensure we have a valid number between 0 and 1
+                        const score = typeof doc.metadata.score === 'number' ? doc.metadata.score : 0;
+                        // normalize score to 0-100 range
+                        const normalizedScore = Math.floor(score * 100);
+                        
+                        if (!providerScores[providerId] || normalizedScore > providerScores[providerId]) {
+                            providerScores[providerId] = normalizedScore;
+                        }
+                    }
+                }
+
+                // prepare data for contract call
+                const queryResults = Object.entries(providerScores).map(([providerId, score]) => ({
+                    providerId,
+                    relevancyScore: score
+                }));
+
+                console.log('Sending payout data:', queryResults); // debug
+
+                // call contract to process payouts
+                if (queryResults.length > 0 && this.wallet) {
+                    try {
+                        await this.wallet.callMethod({
+                            contractId: 'contract1.iseahorse.testnet',
+                            method: 'process_query',
+                            args: { queryResults }
+                        });
+                        console.log('Payout processed successfully'); // debug
+                    } catch (error) {
+                        console.error('Error processing provider payouts:', error);
+                    }
+                }
+                
+                // generate response
                 const response = await this.ragChain!.invoke(
                     { question },
                     { callbacks: [streamingCallback] }
