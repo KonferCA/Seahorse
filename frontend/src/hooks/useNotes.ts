@@ -90,6 +90,12 @@ export const useNotes = ({ agent, setRagGroups }: UseNotesProps) => {
     }
   };
 
+  const deleteNote = async (noteId: string) => {
+    const updatedNotes = notes.filter(note => note.id !== noteId);
+    setNotes(updatedNotes);
+    localStorage.setItem('voice_notes', JSON.stringify(updatedNotes));
+  };
+
   const saveNote = async (content: string) => {
     const title = await generateTitle(content);
     const newNote = {
@@ -137,5 +143,5 @@ export const useNotes = ({ agent, setRagGroups }: UseNotesProps) => {
     localStorage.setItem('voice_notes', JSON.stringify(updatedNotes));
   };
 
-  return { notes, saveNote };
+  return { notes, saveNote, deleteNote };
 };

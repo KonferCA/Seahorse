@@ -64,7 +64,7 @@ export default function Home() {
 
     const agentRef = useRef<Agent | null>(null);
 
-    const { notes, saveNote } = useNotes({ 
+    const { notes, saveNote, deleteNote } = useNotes({ 
         agent: agentRef.current,
         setRagGroups 
     });
@@ -399,10 +399,8 @@ export default function Home() {
                         <RAGStatusPanel groups={ragGroups} />
                         <NotesPanel 
                             notes={notes} 
-                            onSave={async (updatedNote) => {
-                                // TODO: Implement note updating logic
-                                console.log('Note updated:', updatedNote);
-                            }} 
+                            onSave={saveNote}
+                            onDelete={deleteNote}
                         />
                     </div>
                 </div>

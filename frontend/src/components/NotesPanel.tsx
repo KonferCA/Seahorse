@@ -15,9 +15,10 @@ interface Note {
 interface NotesPanelProps {
   notes: Note[];
   onSave: (note: Note) => void;
+  onDelete: (noteId: string) => void;
 }
 
-export default function NotesPanel({ notes, onSave }: NotesPanelProps) {
+export default function NotesPanel({ notes, onSave, onDelete }: NotesPanelProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [editedContent, setEditedContent] = useState('');
   const [editedTitle, setEditedTitle] = useState('');
@@ -97,19 +98,32 @@ export default function NotesPanel({ notes, onSave }: NotesPanelProps) {
                 className="w-full h-64 p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-sky-400"
               />
 
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-between gap-2">
                 <button
-                  onClick={() => setSelectedNote(null)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  onClick={() => {
+                    if (selectedNote) {
+                      onDelete(selectedNote.id);
+                      setSelectedNote(null);
+                    }
+                  }}
+                  className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg"
                 >
-                  Cancel
+                  Delete Note
                 </button>
-                <button
-                  onClick={handleSave}
-                  className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg"
-                >
-                  Save Changes
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedNote(null)}
+                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg"
+                  >
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
