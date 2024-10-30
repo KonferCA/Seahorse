@@ -233,18 +233,33 @@ export default function Home() {
             
             // add context messages if any found
             if (results.length > 0) {
-                const newContextItems = results.map(doc => ({
+                const newContextItems = results.map(([doc, score]) => ({
                     id: Math.random().toString(36).substring(2, 9),
                     type: (doc.metadata.type || 'document') as 'email' | 'calendar' | 'document',
                     title: doc.metadata.title || 'Untitled',
                     content: doc.pageContent,
                     timestamp: new Date(),
                     metadata: {
-                        score: doc.metadata.score || 0.8,
+                        score
                     }
                 }));
 
                 setContextItems(newContextItems);
+
+                const contextMessages = results.map((docTuple) => {
+                    const [doc, score] = docTuple;
+                    return {
+                        role: 'context' as const,
+                        content: doc.pageContent,
+                        timestamp: new Date(),
+                        metadata: {
+                            type: doc.metadata.type || 'document',
+                            title: doc.metadata.title || 'Untitled',
+                            score,
+                        },
+                    };
+                });
+                setMessages((prev) => [...prev, ...contextMessages]);
             } else {
                 setContextItems([]);
             }
@@ -272,7 +287,7 @@ export default function Home() {
                     return newMessages;
                 });
             });
-
+            
             // generate response
             const response = await agentRef.current.generateResponse(currentPrompt);
             
