@@ -25,6 +25,7 @@ export class Agent {
     protected modelName: string;
     protected embeddingModelName: string;
     private isVectorStoreEmpty: boolean = true;
+    private onToken?: (token: string) => void;
 
     constructor(modelName: string, embeddingModelName?: string) {
         this.modelName = modelName;
@@ -142,22 +143,35 @@ export class Agent {
         return [];
     }
 
-    async generateResponse(query: string): Promise<string> {
-        try {
-            const docs = await this.searchSimilar(query, 10);
-            if (docs.length > 0) {
-                return await this.ragChain!.invoke({
-                    question: query,
-                });
-            }
+    async generateResponse(question: string): Promise<string> {
+        const streamingCallback: AIStreamCallbacksAndOptions = {
+            handleLLMNewToken: (token: string) => {
+                this.onToken?.(token);
+            },
+        };
 
-            return await this.defaultChain!.invoke({
-                question: query,
-            });
+        try {
+            const docs = await this.searchSimilar(question, 10);
+            if (docs.length > 0) {
+                const response = await this.ragChain!.invoke(
+                    { question },
+                    { callbacks: [streamingCallback] }
+                );
+                return response;
+            } else {
+                const response = await this.defaultChain!.invoke(
+                    { question },
+                    { callbacks: [streamingCallback] }
+                );
+                return response;
+            }
         } catch (error) {
-            throw new Error(
-                `Failed to generate response: ${(error as Error).message}`
-            );
+            console.error('Error generating response:', error);
+            throw error;
         }
+    }
+
+    setStreamingCallback(callback: (token: string) => void) {
+        this.onToken = callback;
     }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 // import GoogleAuth from './utils/GoogleAuth';
 import { formatGoogleData } from '@/utils/formatGoogleData';
 // import { useGoogleData } from './hooks/useGoogleData';
@@ -49,6 +49,14 @@ export default function Home() {
     const [messages, setMessages] = useState<Message[]>([]);
 
     const agentRef = useRef<Agent | null>(null);
+
+    const [currentStreamingMessage, setCurrentStreamingMessage] = useState('');
+
+    const messageContentRef = useRef('');
+
+    const handleStream = useCallback((token: string) => {
+        setCurrentStreamingMessage(prev => prev + token);
+    }, []);
 
     useEffect(() => {
         const create = async () => {
@@ -172,31 +180,58 @@ export default function Home() {
     }, [googleData]);
 
     const query = async () => {
-        if (!agentRef.current) return;
+        if (!prompt.trim() || !agentRef.current) return;
 
-        setMessages((prev) => [
-            ...prev,
-            {
-                role: 'user',
-                content: prompt,
-                timestamp: new Date(),
-            },
-        ]);
-
-        const response = await agentRef.current.generateResponse(prompt);
-
-        setMessages((prev) => [
-            ...prev,
-            {
-                role: 'assistant',
-                content: response,
-                timestamp: new Date(),
-            },
-        ]);
-
-        // setResponse(response);
-
-        setPrompt('');
+        try {
+            // reset message content ref
+            messageContentRef.current = '';
+            
+            setMessages(prev => [
+                ...prev,
+                { role: 'user', content: prompt, timestamp: new Date() }
+            ]);
+            
+            // add empty assistant message for streaming
+            setMessages(prev => [
+                ...prev,
+                { 
+                    role: 'assistant', 
+                    content: '', 
+                    timestamp: new Date(),
+                    isStreaming: true 
+                }
+            ]);
+            
+            setCurrentStreamingMessage('');
+            agentRef.current.setStreamingCallback((token: string) => {
+                messageContentRef.current += token;
+                
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages[newMessages.length - 1];
+                    if (lastMessage.role === 'assistant') {
+                        lastMessage.content = messageContentRef.current;
+                    }
+                    return newMessages;
+                });
+            });
+            
+            const response = await agentRef.current.generateResponse(prompt);
+            
+            // update final message and remove streaming state
+            setMessages(prev => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages[newMessages.length - 1];
+                if (lastMessage.role === 'assistant') {
+                    lastMessage.isStreaming = false;
+                }
+                return newMessages;
+            });
+            
+            setPrompt('');
+        } catch (error) {
+            console.error('Error:', error);
+        }
     };
 
     const handleGoogleData = (calendar: any, emails: any) => {
