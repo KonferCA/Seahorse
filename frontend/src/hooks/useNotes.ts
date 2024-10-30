@@ -80,8 +80,8 @@ export const useNotes = ({ agent, setRagGroups }: UseNotesProps) => {
     if (!agent) return 'Untitled Note';
 
     try {
-      const response = await agent.generateResponse(
-        'create a 3-5 word title summarizing this note. respond with just the title.'
+      const response = await agent.generateDirectResponse(
+        `create a 3-5 word title summarizing this note: "${content}". respond with just the title.`
       );
       return (response || 'Untitled Note').replace(/"/g, '');
     } catch (error) {

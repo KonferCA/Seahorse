@@ -172,4 +172,16 @@ export class Agent {
     setStreamingCallback(callback: (token: string) => void) {
         this.onToken = callback;
     }
+
+    async generateDirectResponse(prompt: string): Promise<string> {
+        try {
+            const response = await this.defaultChain.invoke({
+                question: prompt
+            });
+            return response;
+        } catch (error) {
+            console.error('Error generating direct response:', error);
+            throw error;
+        }
+    }
 }
