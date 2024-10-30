@@ -52,6 +52,8 @@ export default function Home() {
 
     const [currentStreamingMessage, setCurrentStreamingMessage] = useState('');
 
+    const messageContentRef = useRef('');
+
     const handleStream = useCallback((token: string) => {
         setCurrentStreamingMessage(prev => prev + token);
     }, []);
@@ -199,12 +201,13 @@ export default function Home() {
             
             setCurrentStreamingMessage('');
             agentRef.current.setStreamingCallback((token: string) => {
-                // update the streaming message content in real-time
+                messageContentRef.current += token;
+                
                 setMessages(prev => {
                     const newMessages = [...prev];
                     const lastMessage = newMessages[newMessages.length - 1];
                     if (lastMessage.role === 'assistant') {
-                        lastMessage.content += token;
+                        lastMessage.content = messageContentRef.current;
                     }
                     return newMessages;
                 });
