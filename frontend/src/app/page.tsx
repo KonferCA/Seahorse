@@ -113,31 +113,31 @@ export default function Home() {
                 googleData.calendar.length > 0 ||
                 googleData.emails.length > 0
             ) {
-                // setRagGroups((prev: any) => {
-                //     const existingDocumentGroup = prev.find(
-                //         (g: any) => g.type === 'document'
-                //     );
-                //     const newGroups = [
-                //         {
-                //             type: 'email',
-                //             total: googleData.emails.length,
-                //             completed: 0,
-                //             error: 0,
-                //             inProgress: 0,
-                //         },
-                //         {
-                //             type: 'calendar',
-                //             total: googleData.calendar.length,
-                //             completed: 0,
-                //             error: 0,
-                //             inProgress: 0,
-                //         },
-                //     ];
-                //
-                //     return existingDocumentGroup
-                //         ? [...newGroups, existingDocumentGroup]
-                //         : newGroups;
-                // });
+                setRagGroups((prev: any) => {
+                    const existingDocumentGroup = prev.find(
+                        (g: any) => g.type === 'document'
+                    );
+                    const newGroups = [
+                        {
+                            type: 'email',
+                            total: googleData.emails.length,
+                            completed: 0,
+                            error: 0,
+                            inProgress: 0,
+                        },
+                        {
+                            type: 'calendar',
+                            total: googleData.calendar.length,
+                            completed: 0,
+                            error: 0,
+                            inProgress: 0,
+                        },
+                    ];
+
+                    return existingDocumentGroup
+                        ? [...newGroups, existingDocumentGroup]
+                        : newGroups;
+                });
 
                 const formattedItems = formatGoogleData(
                     googleData.calendar,
@@ -152,45 +152,45 @@ export default function Home() {
                 );
                 console.log('embedded gmail and calendar');
 
-                // for (const item of formattedItems) {
-                // setRagGroups((prev) =>
-                //     prev.map((group) =>
-                //         group.type === item.type
-                //             ? { ...group, inProgress: group.inProgress + 1 }
-                //             : group
-                //     )
-                // );
+                for (const item of formattedItems) {
+                    setRagGroups((prev) =>
+                        prev.map((group) =>
+                            group.type === item.type
+                                ? { ...group, inProgress: group.inProgress + 1 }
+                                : group
+                        )
+                    );
 
-                // try {
-                // setRagGroups((prev) =>
-                //     prev.map((group) =>
-                //         group.type === item.type
-                //             ? {
-                //                 ...group,
-                //                 completed: group.completed + 1,
-                //                 inProgress: group.inProgress - 1,
-                //             }
-                //             : group
-                //     )
-                // );
-                //     } catch (error) {
-                //         setRagGroups((prev) =>
-                //             prev.map((group) =>
-                //                 group.type === item.type
-                //                     ? {
-                //                         ...group,
-                //                         error: group.error + 1,
-                //                         inProgress: group.inProgress - 1,
-                //                     }
-                //                     : group
-                //             )
-                //         );
-                //         console.error(
-                //             `Error processing ${item.type} item:`,
-                //             error
-                //         );
-                //     }
-                // }
+                    try {
+                        setRagGroups((prev) =>
+                            prev.map((group) =>
+                                group.type === item.type
+                                    ? {
+                                        ...group,
+                                        completed: group.completed + 1,
+                                        inProgress: group.inProgress - 1,
+                                    }
+                                    : group
+                            )
+                        );
+                    } catch (error) {
+                        setRagGroups((prev) =>
+                            prev.map((group) =>
+                                group.type === item.type
+                                    ? {
+                                        ...group,
+                                        error: group.error + 1,
+                                        inProgress: group.inProgress - 1,
+                                    }
+                                    : group
+                            )
+                        );
+                        console.error(
+                            `Error processing ${item.type} item:`,
+                            error
+                        );
+                    }
+                }
             }
         };
 
