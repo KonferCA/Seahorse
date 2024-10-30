@@ -1,7 +1,7 @@
 import localforage from 'localforage';
 
 export interface Document {
-    text: string;
+    pageContent: string;
     metadata: Record<any, any>;
 }
 
@@ -71,15 +71,15 @@ export class VectorStore {
         return chunks;
     }
 
-    async addDocument(text: string, metadata = {}) {
+    async addDocument(pageContent: string, metadata = {}) {
         if (!this.initialized) await this.initialize();
 
-        const chunks = this.chunkText(text);
+        const chunks = this.chunkText(pageContent);
         const documents = await this.store.getItem<Document[]>('documents') || [];
         const existingMetadata = await this.store.getItem<ChunkMetadata[]>('metadata') || [];
 
         const docId = `doc_${documents.length}`;
-        documents.push({ text, metadata });
+        documents.push({ pageContent, metadata });
 
         for (let i = 0; i < chunks.length; i++) {
             existingMetadata.push({
@@ -115,36 +115,63 @@ export class VectorStore {
         const queryTerms = new Set(queryText.toLowerCase().split(/\s+/));
 
         const similarities = vectors.map(({docId, vector}, index) => {
-            const chunk = metadata[index]?.chunk || '';
-
-            const chunkTerms = new Set(chunk.toLowerCase().split(/\s+/));
+            const pageContent = metadata[index]?.chunk || '';
+            const contentTerms = new Set(pageContent.toLowerCase().split(/\s+/));
             const termOverlap = [...queryTerms].filter((term) =>
-                chunkTerms.has(term)
+                contentTerms.has(term)
             ).length;
 
-            const score = this.cosineSimilarity(queryVector, vector) * (1 + 0.1 * termOverlap);
-
+            let score = this.cosineSimilarity(queryVector, vector);
+            if (isNaN(score)) {
+                console.warn('cosine similarity returned NaN, defaulting to 0');
+                score = 0;
+            }
+            
+            score = score * (1 + 0.1 * termOverlap);
+            
+            console.log(`Score for chunk ${index}: ${score}, termOverlap: ${termOverlap}`);
             return {
-                chunk,
-                metadata: metadata[index],
-                score
+                pageContent,
+                metadata: {
+                    ...metadata[index],
+                    score: Math.max(0, Math.min(1, score))
+                },
+                score: Math.max(0, Math.min(1, score))
             };
         });
 
-        return similarities.sort((a, b) => b.score - a.score).slice(0, k);
+        const validSimilarities = similarities.filter(s => !isNaN(s.score) && s.score > 0);
+        return validSimilarities
+            .sort((a, b) => b.score - a.score)
+            .slice(0, k);
     }
 
     private cosineSimilarity(a: number[], b: number[]) {
+        if (!a || !b || a.length !== b.length) {
+            console.warn('invalid vectors for cosine similarity');
+            return 0;
+        }
+
         let dotProduct = 0;
         let normA = 0;
         let normB = 0;
         
         for (let i = 0; i < a.length; i++) {
+            if (typeof a[i] !== 'number' || typeof b[i] !== 'number') {
+                console.warn('non-numeric values in vectors');
+                return 0;
+            }
             dotProduct += a[i] * b[i];
             normA += a[i] * a[i];
             normB += b[i] * b[i];
         }
         
-        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+        if (denominator === 0) {
+            console.warn('zero denominator in cosine similarity');
+            return 0;
+        }
+        
+        return dotProduct / denominator;
     }
 }
