@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { HiOutlineCalendar, HiOutlineEnvelope, HiOutlineDocument, HiOutlineXMark } from "react-icons/hi2";
 
-interface ContextItem {
+export interface ContextItem {
     id: string;
     type: 'email' | 'calendar' | 'document';
     title: string;
     content: string;
     timestamp: Date;
-    metadata?: {
+    metadata: {
         score: number;
     };
 }
@@ -114,7 +114,7 @@ ${parsed.attendees.map(a => `- ${a}`).join('\n')}`
                                             {parsed.title}
                                         </h3>
                                         <p className="text-xs text-gray-500 mt-1">
-                                            Relevance: {item.metadata?.score ? (item.metadata.score * 100).toFixed(1) : 0}%
+                                            Relevance: {(item.metadata.score * 100).toFixed(1)}%
                                         </p>
                                     </div>
                                 </div>
