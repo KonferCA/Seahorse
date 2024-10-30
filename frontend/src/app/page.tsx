@@ -49,7 +49,7 @@ export default function Home() {
     const [prompt, setPrompt] = useState('');
     const [progress, setProgress] = useState<ProgressState>({
         progress: 0,
-        text: '',
+        text: 'Initializing...',
         timeElapsed: 0,
     });
     const [response, setResponse] = useState('');
@@ -82,28 +82,31 @@ export default function Home() {
 
     useEffect(() => {
         const create = async () => {
-            setProgress((prev) => ({
-                ...prev,
-                progress: 0,
-                text: 'Preparing environment...',
-            }));
+            if (agentRef.current === null) {
+                setProgress({
+                    progress: 0,
+                    text: 'Preparing environment...',
+                    timeElapsed: 0
+                });
 
-            try {
-                if (agentRef.current === null) {
+                try {
                     const agent = new Agent(selectedModel);
-                    await agent.initialize((progress) =>
-                        setProgress({
-                            ...progress,
-                        })
-                    );
+                    await agent.initialize((update) => {
+                        setProgress(prev => ({
+                            progress: update.progress * 100, // convert to percentage
+                            text: update.message,
+                            timeElapsed: prev.timeElapsed
+                        }));
+                    });
                     agentRef.current = agent;
+                } catch (error) {
+                    console.error('Error initializing:', error);
+                    setProgress({
+                        progress: 0,
+                        text: 'Error initializing model. Please refresh.',
+                        timeElapsed: 0
+                    });
                 }
-            } catch (error) {
-                console.error('Error initializing:', error);
-                setProgress((prev) => ({
-                    ...prev,
-                    text: 'Error initializing model. Please refresh.',
-                }));
             }
         };
         create();
@@ -298,33 +301,31 @@ export default function Home() {
         }));
     }, []);
 
-    // Add timer effect for timeElapsed
+    // Add timer effect
     useEffect(() => {
-        let startTime: number;
-        let animationFrame: number;
+        let startTime: number | null = null;
+        let animationFrameId: number;
 
         const updateTimer = (timestamp: number) => {
             if (!startTime) startTime = timestamp;
-            const elapsed = (timestamp - startTime) / 1000; // convert to seconds
-            
-            setProgress(prev => ({
-                ...prev,
-                timeElapsed: elapsed
-            }));
+            const elapsed = (timestamp - startTime) / 1000;
 
-            if (progress.progress < 100) {
-                animationFrame = requestAnimationFrame(updateTimer);
+            if (progress.progress > 0 && progress.progress < 100) {
+                setProgress(prev => ({
+                    ...prev,
+                    timeElapsed: elapsed
+                }));
+                animationFrameId = requestAnimationFrame(updateTimer);
             }
         };
 
         if (progress.progress > 0 && progress.progress < 100) {
-            startTime = performance.now();
-            animationFrame = requestAnimationFrame(updateTimer);
+            animationFrameId = requestAnimationFrame(updateTimer);
         }
 
         return () => {
-            if (animationFrame) {
-                cancelAnimationFrame(animationFrame);
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
             }
         };
     }, [progress.progress]);

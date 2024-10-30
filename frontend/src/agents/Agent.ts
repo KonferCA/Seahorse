@@ -81,81 +81,107 @@ export class Agent {
     }
 
     async initialize(progressCallback: InitProgressCallback) {
-        this.embeddings = new HuggingFaceTransformersEmbeddings({
-            modelName: this.embeddingModelName,
-        });
-        this.textSplitter = new RecursiveCharacterTextSplitter({
-            chunkSize: 500,
-            chunkOverlap: 50,
-        });
-        this.voyClient = new VoyClient();
-        this.vectorStore = new VoyVectorStore(this.voyClient, this.embeddings);
-        this.llm = new ChatWebLLM({
-            model: this.modelName,
-            appConfig: {
-                ...prebuiltAppConfig,
-                useIndexedDBCache: true,
-            },
-            maxRetries: 10,
-            chatOptions: {
-                context_window_size: 2048,
-            },
-        });
-        // await this.llm.reload('Phi-3.5-mini-instruct-q4f16_1-MLC-1k');
-        await this.llm.initialize(progressCallback);
-
-        progressCallback({ message: 'Loading provider data...', progress: 0.7 });
-        const providerData = await this.fetchAllProviderData();
-        
-        // add provider data to vectorstore
-        if (providerData.length > 0) {
-            const docs = providerData.map(content => 
-                new Document({ pageContent: content, metadata: { source: 'provider' } })
-            );
-            await this.vectorStore.addDocuments(docs);
-        }
-
-        // Create RAG prompt template
-        const prompt = ChatPromptTemplate.fromMessages([
-            SystemMessagePromptTemplate.fromTemplate(
-                "You are a helpful AI assistant. Use the following context to answer the user's question.\n\nContext: {context}\n\nLimit your answers to maximum of 50 words."
-            ),
-            HumanMessagePromptTemplate.fromTemplate('{question}'),
-        ]);
-
-        // Create RAG chain
-        this.ragChain = RunnableSequence.from([
-            {
-                context: async (input: { question: string }) => {
-                    const docs = await this.searchSimilar(input.question, 10);
-                    docs.forEach((doc) => console.log(doc.pageContent));
-                    // console.log(formatDocumentsAsString(docs));
-                    return formatDocumentsAsString(docs);
+        try {
+            // Start with model loading
+            progressCallback({ message: 'Loading AI model...', progress: 0.1 });
+            
+            // Initialize LLM first
+            this.llm = new ChatWebLLM({
+                model: this.modelName,
+                appConfig: {
+                    ...prebuiltAppConfig,
+                    useIndexedDBCache: true,
                 },
-                question: (input: { question: string }) => input.question,
-            },
-            prompt,
-            this.llm,
-            new StringOutputParser(),
-        ]);
+                maxRetries: 10,
+                chatOptions: {
+                    context_window_size: 8096,
+                },
+            });
 
-        // Create default prompt template for when no context is available
-        const defaultPrompt = ChatPromptTemplate.fromMessages([
-            SystemMessagePromptTemplate.fromTemplate(
-                "You are a helpful AI assistant. Please answer the user's question to the best of your ability. Limit your answers to maximum of 50 words."
-            ),
-            HumanMessagePromptTemplate.fromTemplate('{question}'),
-        ]);
+            // Wait for model to initialize
+            await this.llm.initialize(progressCallback);
+            progressCallback({ message: 'AI model loaded', progress: 0.5 });
 
-        // Create default chain, use for when there is nothing in the RAG chain.
-        this.defaultChain = RunnableSequence.from([
-            {
-                question: (input: { question: string }) => input.question,
-            },
-            defaultPrompt,
-            this.llm,
-            new StringOutputParser(),
-        ]);
+            // Initialize embeddings and vector store
+            progressCallback({ message: 'Initializing embeddings...', progress: 0.6 });
+            this.embeddings = new HuggingFaceTransformersEmbeddings({
+                modelName: this.embeddingModelName,
+            });
+
+            this.textSplitter = new RecursiveCharacterTextSplitter({
+                chunkSize: 500,
+                chunkOverlap: 50,
+            });
+
+            progressCallback({ message: 'Setting up vector store...', progress: 0.7 });
+            this.voyClient = new VoyClient();
+            this.vectorStore = new VoyVectorStore(this.voyClient, this.embeddings);
+
+            // Load provider data
+            progressCallback({ message: 'Loading provider data...', progress: 0.8 });
+            const providerData = await this.fetchAllProviderData();
+            
+            if (providerData.length > 0) {
+                const docs = providerData.map(content => 
+                    new Document({ pageContent: content, metadata: { source: 'provider' } })
+                );
+                await this.vectorStore.addDocuments(docs);
+            }
+
+            // Initialize chains
+            progressCallback({ message: 'Finalizing setup...', progress: 0.9 });
+            
+            // Create RAG prompt template
+            const prompt = ChatPromptTemplate.fromMessages([
+                SystemMessagePromptTemplate.fromTemplate(
+                    "You are a helpful AI assistant. Use the following context to answer the user's question.\n\nContext: {context}\n\nLimit your answers to maximum of 50 words."
+                ),
+                HumanMessagePromptTemplate.fromTemplate('{question}'),
+            ]);
+
+            // Create RAG chain
+            this.ragChain = RunnableSequence.from([
+                {
+                    context: async (input: { question: string }) => {
+                        const docs = await this.searchSimilar(input.question, 10);
+                        docs.forEach((doc) => console.log(doc.pageContent));
+                        // console.log(formatDocumentsAsString(docs));
+                        return formatDocumentsAsString(docs);
+                    },
+                    question: (input: { question: string }) => input.question,
+                },
+                prompt,
+                this.llm,
+                new StringOutputParser(),
+            ]);
+
+            // Create default prompt template for when no context is available
+            const defaultPrompt = ChatPromptTemplate.fromMessages([
+                SystemMessagePromptTemplate.fromTemplate(
+                    "You are a helpful AI assistant. Please answer the user's question to the best of your ability. Limit your answers to maximum of 50 words."
+                ),
+                HumanMessagePromptTemplate.fromTemplate('{question}'),
+            ]);
+
+            // Create default chain, use for when there is nothing in the RAG chain.
+            this.defaultChain = RunnableSequence.from([
+                {
+                    question: (input: { question: string }) => input.question,
+                },
+                defaultPrompt,
+                this.llm,
+                new StringOutputParser(),
+            ]);
+
+            progressCallback({ message: 'Ready!', progress: 1.0 });
+        } catch (error) {
+            console.error('Error during initialization:', error);
+            progressCallback({ 
+                message: 'Error initializing system', 
+                progress: 0 
+            });
+            throw error;
+        }
     }
 
     async embedTexts(texts: string[]): Promise<number> {
