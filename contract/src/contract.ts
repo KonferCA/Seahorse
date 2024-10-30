@@ -16,29 +16,34 @@ type DataItem = {
 @NearBindgen({})
 class DataProviderContract {
     providers: LookupMap<Provider>;
+    providerIds: Vector<string>;
     providerData: LookupMap<DataItem[]>;
 
     constructor() {
-        this.providers = new LookupMap('p');
-        this.providerData = new LookupMap('d');
+        this.providers = new LookupMap<Provider>('providers_v1');
+        this.providerIds = new Vector<string>('provider_ids_v1');
+        this.providerData = new LookupMap<DataItem[]>('provider_data_v1');
     }
 
     @initialize({})
-    init() {
+    init(): void {
         near.log("Initializing contract");
+        this.providers = new LookupMap<Provider>('providers_v1');
+        this.providerIds = new Vector<string>('provider_ids_v1');
+        this.providerData = new LookupMap<DataItem[]>('provider_data_v1');
     }
 
     @call({})
     add_provider({ id, name, valueScore, walletAddress }: { id: string; name: string; valueScore: number; walletAddress: string }): void {
-        near.log(`Adding provider: ${id}, name: ${name}, valueScore: ${valueScore}, wallet: ${walletAddress}`);
+        near.log(`Adding provider: ${id}`);
         
         if (valueScore < 1 || valueScore > 100) {
-            near.log(`Invalid value score: ${valueScore}`);
             throw new Error("Value score must be between 1 and 100");
         }
         
         const provider: Provider = { id, name, valueScore, walletAddress };
         this.providers.set(id, provider);
+        this.providerIds.push(id);
         this.providerData.set(id, []);
         
         near.log(`Successfully added provider ${id}`);
@@ -69,15 +74,17 @@ class DataProviderContract {
         near.log(`Starting add_provider_data for provider: ${providerId}`);
         near.log(`Number of items to add: ${data.length}`);
         
-        const existingData = this.providerData.get(providerId) || []; 
-
-        if (!existingData) {
-            near.log(`Provider ${providerId} not found`);
-            throw new Error("Provider not found");
-        }
-    
-        const newData = [...existingData, ...data];
-        this.providerData.set(providerId, newData);
+        // initialize empty array if no existing data
+        let existingData = this.providerData.get(providerId) || [];
+        
+        // ensure we're working with arrays
+        const currentData = Array.isArray(existingData) ? existingData : [];
+        const newData = Array.isArray(data) ? data : [];
+        
+        // combine the arrays
+        const combinedData = [...currentData, ...newData];
+        this.providerData.set(providerId, combinedData);
+        
         near.log(`Successfully added ${data.length} items for provider ${providerId}`);
     }
 
@@ -153,12 +160,48 @@ class DataProviderContract {
         near.log(`Getting data for provider: ${providerId}`);
         const data = this.providerData.get(providerId);
         
-        if (data) {
-            near.log(`Found ${data.length} items for provider ${providerId}`);
-            return data;
-        } else {
-            near.log(`Provider ${providerId} not found`);
+        if (!data) {
+            near.log(`Provider ${providerId} not found or has no data`);
             return [];
         }
+
+        // ensure we're returning a plain array
+        return Array.isArray(data) ? data : [];
+    }
+
+    @view({})
+    get_all_providers(): Provider[] {
+        const providers: Provider[] = [];
+        const ids = this.providerIds.toArray();
+        
+        for (const id of ids) {
+            const provider = this.providers.get(id);
+            if (provider) {
+                providers.push(provider);
+            }
+        }
+        
+        return providers;
+    }
+
+    @call({})
+    remove_provider({ id }: { id: string }): void {
+        near.log(`Starting remove_provider for: ${id}`);
+        
+        // Remove the provider
+        this.providers.remove(id);
+        
+        // Remove from providerIds vector
+        const ids = this.providerIds.toArray();
+        const filteredIds = ids.filter(pid => pid !== id);
+        this.providerIds.clear();
+        for (const pid of filteredIds) {
+            this.providerIds.push(pid);
+        }
+        
+        // Remove all associated data
+        this.providerData.remove(id);
+        
+        near.log(`Successfully removed provider ${id} and its data`);
     }
 }

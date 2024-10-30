@@ -17,6 +17,7 @@ import { useNotes } from '@/hooks/useNotes';
 import { Agent } from '@/agents/Agent';
 import VoiceModal from '@/components/VoiceModal';
 import ContextPanel, { ContextItem } from '@/components/ContextPanel';
+import AdminPanel from '@/components/AdminPanel';
 
 type ProgressState = {
     progress: number;
@@ -49,7 +50,7 @@ export default function Home() {
     const [prompt, setPrompt] = useState('');
     const [progress, setProgress] = useState<ProgressState>({
         progress: 0,
-        text: '',
+        text: 'Initializing...',
         timeElapsed: 0,
     });
     const [response, setResponse] = useState('');
@@ -91,28 +92,61 @@ export default function Home() {
 
     useEffect(() => {
         const create = async () => {
-            setProgress((prev) => ({
-                ...prev,
-                progress: 0,
-                text: 'Preparing environment...',
-            }));
+            if (agentRef.current === null) {
+                setProgress({
+                    progress: 0,
+                    text: 'Preparing environment...',
+                    timeElapsed: 0
+                });
 
-            try {
-                if (agentRef.current === null) {
+                try {
                     const agent = new Agent(selectedModel);
-                    await agent.initialize((progress) =>
-                        setProgress({
-                            ...progress,
-                        })
-                    );
+                    await agent.initialize((update) => {
+                        setProgress(prev => ({
+                            progress: update.progress * 100,
+                            text: update.message,
+                            timeElapsed: prev.timeElapsed
+                        }));
+
+                        // handle rag updates
+                        if (update.ragUpdate) {
+                            setRagGroups(prev => {
+                                const existingGroup = prev.find(g => g.type === update.ragUpdate!.type);
+                                
+                                if (!existingGroup && update.ragUpdate?.total) {
+                                    return [...prev, {
+                                        type: update.ragUpdate.type,
+                                        total: update.ragUpdate.total,
+                                        completed: update.ragUpdate.completed || 0,
+                                        error: update.ragUpdate.error || 0,
+                                        inProgress: update.ragUpdate.inProgress || 0
+                                    }];
+                                } else if (existingGroup) {
+                                    return prev.map(group => 
+                                        group.type === update.ragUpdate!.type
+                                            ? {
+                                                ...group,
+                                                ...(update.ragUpdate?.total !== undefined && { total: update.ragUpdate.total }),
+                                                ...(update.ragUpdate?.completed !== undefined && { completed: update.ragUpdate.completed }),
+                                                ...(update.ragUpdate?.error !== undefined && { error: update.ragUpdate.error }),
+                                                ...(update.ragUpdate?.inProgress !== undefined && { inProgress: update.ragUpdate.inProgress })
+                                            }
+                                            : group
+                                    );
+                                }
+                                return prev;
+                            });
+                        }
+                    });
                     agentRef.current = agent;
+                } catch (error) {
+                    console.error('Error initializing:', error);
+                    setProgress({
+                        progress: 0,
+                        text: 'Error initializing model. Please refresh.',
+                        timeElapsed: 0
+                    });
                 }
-            } catch (error) {
-                console.error('Error initializing:', error);
-                setProgress((prev) => ({
-                    ...prev,
-                    text: 'Error initializing model. Please refresh.',
-                }));
             }
         };
         create();
@@ -323,32 +357,118 @@ export default function Home() {
         });
     };
 
+    const handleProgress = useCallback((update: { 
+        message: string; 
+        progress: number;
+        ragUpdate?: {
+            type: string;
+            total?: number;
+            completed?: number;
+            error?: number;
+            inProgress?: number;
+        };
+    }) => {
+        setProgress(prev => ({
+            progress: update.progress * 100,
+            text: update.message,
+            timeElapsed: prev.timeElapsed
+        }));
+
+        if (update.ragUpdate) {
+            setRagGroups(prev => {
+                const existingGroup = prev.find(g => g.type === update.ragUpdate!.type);
+                
+                if (!existingGroup && update.ragUpdate?.total) {
+                    // add new group
+                    return [...prev, {
+                        type: update.ragUpdate.type as any,
+                        total: update.ragUpdate.total,
+                        completed: update.ragUpdate.completed || 0,
+                        error: update.ragUpdate.error || 0,
+                        inProgress: update.ragUpdate.inProgress || 0
+                    }];
+                } else if (existingGroup) {
+                    // update existing group
+                    return prev.map(group => 
+                        group.type === update.ragUpdate!.type
+                            ? {
+                                ...group,
+                                ...(update.ragUpdate?.total !== undefined && { total: update.ragUpdate.total }),
+                                ...(update.ragUpdate?.completed !== undefined && { completed: update.ragUpdate.completed }),
+                                ...(update.ragUpdate?.error !== undefined && { error: update.ragUpdate.error }),
+                                ...(update.ragUpdate?.inProgress !== undefined && { inProgress: update.ragUpdate.inProgress })
+                            }
+                            : group
+                    );
+                }
+                return prev;
+            });
+        }
+    }, []);
+
+    // Add timer effect
+    useEffect(() => {
+        let startTime: number | null = null;
+        let animationFrameId: number;
+
+        const updateTimer = (timestamp: number) => {
+            if (!startTime) startTime = timestamp;
+            const elapsed = (timestamp - startTime) / 1000;
+
+            if (progress.progress > 0 && progress.progress < 100) {
+                setProgress(prev => ({
+                    ...prev,
+                    timeElapsed: elapsed
+                }));
+                animationFrameId = requestAnimationFrame(updateTimer);
+            }
+        };
+
+        if (progress.progress > 0 && progress.progress < 100) {
+            animationFrameId = requestAnimationFrame(updateTimer);
+        }
+
+        return () => {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        };
+    }, [progress.progress]);
+
     return (
         <NearAuthGate>
-            <div className="min-h-screen p-4 bg-gray-50">
+            <main className="min-h-screen bg-gray-50 p-8">
                 <div className="max-w-6xl mx-auto flex gap-4">
-                    {}
                     <div className="flex-1 bg-white rounded-lg shadow-lg">
-                        {}
                         <div className="p-4 border-b border-gray-200">
                             <h2 className="text-xl font-semibold text-gray-800">
                                 AI Assistant
                             </h2>
                         </div>
 
-                        {}
                         <div className="h-[60vh] overflow-y-auto p-4">
                             <Chat
                                 messages={messages}
                                 onSendMessage={query}
-                                isLoading={
-                                    progress.progress > 0 &&
-                                    progress.progress < 1
-                                }
+                                isLoading={progress.progress > 0 && progress.progress < 100}
                             />
                         </div>
 
-                        {}
+                        {progress.progress > 0 && progress.progress < 100 && (
+                            <div className="px-4 py-2 border-t border-gray-100">
+                                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                                    <span>{progress.text}</span>
+                                    <span>{progress.timeElapsed?.toFixed(1) || '0.0'}s</span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-1">
+                                    <div 
+                                        className="bg-blue-500 h-1 rounded-full transition-all duration-300" 
+                                        style={{ width: `${progress.progress}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         <div className="p-4 border-t border-gray-200">
                             <div className="flex gap-2">
                                 <input
@@ -366,14 +486,9 @@ export default function Home() {
                                 </button>
                                 <button
                                     onClick={query}
-                                    disabled={
-                                        !prompt.trim() ||
-                                        (progress.progress > 0 &&
-                                            progress.progress < 1)
-                                    }
+                                    disabled={!prompt.trim() || (progress.progress > 0 && progress.progress < 100)}
                                     className={`px-4 py-2 bg-sky-400 text-white rounded-lg font-medium
-                                        ${progress.progress > 0 &&
-                                            progress.progress < 1
+                                        ${progress.progress > 0 && progress.progress < 100
                                             ? 'opacity-50 cursor-not-allowed'
                                             : 'hover:bg-sky-500 active:bg-sky-600'
                                         }`}
@@ -381,55 +496,11 @@ export default function Home() {
                                     Send
                                 </button>
                             </div>
-
-                            <VoiceModal
-                                isOpen={isVoiceModalOpen}
-                                onClose={() => setIsVoiceModalOpen(false)}
-                                onSave={async (text) => {
-                                    await saveNote(text);
-                                    setIsVoiceModalOpen(false);
-                                }}
-                                onSend={(text) => {
-                                    setPrompt(text);
-                                    setIsVoiceModalOpen(false);
-                                }}
-                            />
-
-                            {progress.progress >= 0 && (
-                                <div className="mt-4 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                                    <div className="flex justify-between mb-2">
-                                        <span className="text-sm font-medium text-gray-700">
-                                            {progress.text}
-                                        </span>
-                                        <span className="text-sm text-gray-500">
-                                            {Math.floor(
-                                                progress.progress * 100
-                                            )}
-                                            %
-                                        </span>
-                                    </div>
-                                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-sky-400 transition-all duration-300 ease-in-out"
-                                            style={{
-                                                width: `${Math.floor(progress.progress * 100)}%`,
-                                                transition:
-                                                    'width 0.5s ease-in-out',
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="mt-2 flex justify-between text-xs text-gray-500">
-                                        <span>{progress.text}</span>
-                                        <span>
-                                            {progress.timeElapsed.toFixed(1)}s
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
 
                     <div className="w-80 space-y-4">
+                        <AdminPanel />
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />
                         <NotesPanel 
@@ -440,7 +511,7 @@ export default function Home() {
                         <ContextPanel items={contextItems} />
                     </div>
                 </div>
-            </div>
+            </main>
         </NearAuthGate>
     );
 }
