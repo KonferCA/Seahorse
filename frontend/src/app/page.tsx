@@ -199,7 +199,9 @@ export default function Home() {
 
     const query = async () => {
         if (!prompt.trim() || !agentRef.current) return;
-
+        
+        messageContentRef.current = ''; // reset message content before starting new chat
+        
         try {
             // add user message
             setMessages(prev => [
