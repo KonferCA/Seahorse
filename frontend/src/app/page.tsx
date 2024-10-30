@@ -30,9 +30,6 @@ type RAGItem = {
     timestamp: number;
 };
 
-env.useBrowserCache = true;
-env.allowLocalModels = false;
-
 // add interface for search results
 interface SearchResult {
     chunk: string;
@@ -64,14 +61,12 @@ export default function Home() {
     const [ragItems, setRagItems] = useState<RAGItem[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
 
+    const agentRef = useRef<Agent | null>(null);
+
     const { notes, saveNote } = useNotes({ 
-        engineRef, 
-        vectorStoreRef, 
-        embeddingModelRef, 
+        agent: agentRef.current,
         setRagGroups 
     });
-
-    const agentRef = useRef<Agent | null>(null);
 
     const [currentStreamingMessage, setCurrentStreamingMessage] = useState('');
 
@@ -205,70 +200,31 @@ export default function Home() {
     const query = async () => {
         if (!prompt.trim() || !agentRef.current) return;
 
-        setMessages((prev) => [
-            ...prev,
-            {
-                role: 'user',
-                content: prompt,
-                timestamp: new Date(),
-            },
-        ]);
-
-        const embeddings = await embeddingModelRef.current(prompt, {
-            pooling: 'mean',
-            normalize: true,
-        });
-
-        const results = await vectorStoreRef.current.similaritySearch(
-            Array.from(embeddings.data),
-            prompt,
-            4
-        );
-
-        const contextMessages = results.map((r: SearchResult) => ({
-            role: 'context' as const,
-            content: r.chunk,
-            timestamp: new Date(),
-            metadata: {
-                type: r.metadata.type,
-                score: r.score,
-                title: r.metadata.title || 'Untitled',
-            },
-        }));
-
-        setMessages((prev) => [...prev, ...contextMessages]);
-
-        let context = results.map((r: SearchResult) => r.chunk).join('\n');
-
-        const reply = await engineRef.current.chat.completions.create({
-            messages: [
-                {
-                    role: 'system',
-                    content: `Here is some context that might help you answer the user's query: \n${context}\n\nYou are supportive friend. Do not hallucinate, be polite and concise.`,
-                },
-                { role: 'user', content: prompt },
-            ],
-        });
-
-        setMessages((prev: any) => [
-            ...prev,
-            {
-                role: 'assistant',
-                content: reply.choices[0]?.message.content,
-                timestamp: new Date(),
-            },
-        ]);
-
-        setPrompt('');
         try {
-            // reset message content ref
-            messageContentRef.current = '';
-            
+            // add user message
             setMessages(prev => [
                 ...prev,
                 { role: 'user', content: prompt, timestamp: new Date() }
             ]);
             
+            // get similar documents
+            const results = await agentRef.current.searchSimilar(prompt, 4);
+            
+            // add context messages if any found
+            if (results.length > 0) {
+                const contextMessages = results.map(doc => ({
+                    role: 'context' as const,
+                    content: doc.pageContent,
+                    timestamp: new Date(),
+                    metadata: {
+                        type: doc.metadata.type || 'document',
+                        score: doc.metadata.score || 0.8,
+                        title: doc.metadata.title || 'Untitled',
+                    },
+                }));
+                setMessages(prev => [...prev, ...contextMessages]);
+            }
+
             // add empty assistant message for streaming
             setMessages(prev => [
                 ...prev,
@@ -280,10 +236,9 @@ export default function Home() {
                 }
             ]);
             
-            setCurrentStreamingMessage('');
+            // set up streaming callback
             agentRef.current.setStreamingCallback((token: string) => {
                 messageContentRef.current += token;
-                
                 setMessages(prev => {
                     const newMessages = [...prev];
                     const lastMessage = newMessages[newMessages.length - 1];
@@ -294,6 +249,7 @@ export default function Home() {
                 });
             });
             
+            // generate response
             const response = await agentRef.current.generateResponse(prompt);
             
             // update final message and remove streaming state
@@ -308,7 +264,15 @@ export default function Home() {
             
             setPrompt('');
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error during chat:', error);
+            setMessages(prev => [
+                ...prev,
+                {
+                    role: 'assistant',
+                    content: 'Sorry, there was an error processing your request.',
+                    timestamp: new Date()
+                }
+            ]);
         }
     };
 
