@@ -1,15 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-// import GoogleAuth from './utils/GoogleAuth';
 import { formatGoogleData } from '@/utils/formatGoogleData';
-// import { useGoogleData } from './hooks/useGoogleData';
 import NearAuthGate from '@/components/NearAuthGate';
-// import { essay } from '@/data/essay';
 import RAGStatusPanel from '@/components/RAGStatusPanel';
 import GoogleDataPanel from '@/components/GoogleDataPanel';
 import Chat from '@/components/Chat';
-import { VectorStore } from '@/services';
 import type { Message } from '@/components/Chat';
 import type { GroupProgress } from '@/components/RAGStatusPanel';
 import NotesPanel from '@/components/NotesPanel';
@@ -30,17 +26,6 @@ type RAGItem = {
     timestamp: number;
 };
 
-// add interface for search results
-interface SearchResult {
-    chunk: string;
-    score: number;
-    metadata: {
-        type: string;
-        title?: string;
-        [key: string]: any;
-    };
-}
-
 export default function Home() {
     const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
     // const selectedModel = 'Phi-3.5-vision-instruct-q4f16_1-MLC';
@@ -50,7 +35,6 @@ export default function Home() {
         text: '',
         timeElapsed: 0,
     });
-    const [response, setResponse] = useState('');
     const [googleData, setGoogleData] = useState({
         calendar: [],
         emails: [],
@@ -63,9 +47,9 @@ export default function Home() {
 
     const agentRef = useRef<Agent | null>(null);
 
-    const { notes, saveNote } = useNotes({ 
+    const { notes, saveNote } = useNotes({
         agent: agentRef.current,
-        setRagGroups 
+        setRagGroups,
     });
 
     const [currentStreamingMessage, setCurrentStreamingMessage] = useState('');
@@ -73,7 +57,7 @@ export default function Home() {
     const messageContentRef = useRef('');
 
     const handleStream = useCallback((token: string) => {
-        setCurrentStreamingMessage(prev => prev + token);
+        setCurrentStreamingMessage((prev) => prev + token);
     }, []);
 
     useEffect(() => {
@@ -166,10 +150,10 @@ export default function Home() {
                             prev.map((group) =>
                                 group.type === item.type
                                     ? {
-                                        ...group,
-                                        completed: group.completed + 1,
-                                        inProgress: group.inProgress - 1,
-                                    }
+                                          ...group,
+                                          completed: group.completed + 1,
+                                          inProgress: group.inProgress - 1,
+                                      }
                                     : group
                             )
                         );
@@ -178,10 +162,10 @@ export default function Home() {
                             prev.map((group) =>
                                 group.type === item.type
                                     ? {
-                                        ...group,
-                                        error: group.error + 1,
-                                        inProgress: group.inProgress - 1,
-                                    }
+                                          ...group,
+                                          error: group.error + 1,
+                                          inProgress: group.inProgress - 1,
+                                      }
                                     : group
                             )
                         );
@@ -199,22 +183,22 @@ export default function Home() {
 
     const query = async () => {
         if (!prompt.trim() || !agentRef.current) return;
-        
+
         messageContentRef.current = ''; // reset message content before starting new chat
-        
+
         try {
             // add user message
-            setMessages(prev => [
+            setMessages((prev) => [
                 ...prev,
-                { role: 'user', content: prompt, timestamp: new Date() }
+                { role: 'user', content: prompt, timestamp: new Date() },
             ]);
-            
+
             // get similar documents
             const results = await agentRef.current.searchSimilar(prompt, 4);
-            
+
             // add context messages if any found
             if (results.length > 0) {
-                const contextMessages = results.map(doc => ({
+                const contextMessages = results.map((doc) => ({
                     role: 'context' as const,
                     content: doc.pageContent,
                     timestamp: new Date(),
@@ -224,24 +208,24 @@ export default function Home() {
                         title: doc.metadata.title || 'Untitled',
                     },
                 }));
-                setMessages(prev => [...prev, ...contextMessages]);
+                setMessages((prev) => [...prev, ...contextMessages]);
             }
 
             // add empty assistant message for streaming
-            setMessages(prev => [
+            setMessages((prev) => [
                 ...prev,
-                { 
-                    role: 'assistant', 
-                    content: '', 
+                {
+                    role: 'assistant',
+                    content: '',
                     timestamp: new Date(),
-                    isStreaming: true 
-                }
+                    isStreaming: true,
+                },
             ]);
-            
+
             // set up streaming callback
             agentRef.current.setStreamingCallback((token: string) => {
                 messageContentRef.current += token;
-                setMessages(prev => {
+                setMessages((prev) => {
                     const newMessages = [...prev];
                     const lastMessage = newMessages[newMessages.length - 1];
                     if (lastMessage.role === 'assistant') {
@@ -250,12 +234,12 @@ export default function Home() {
                     return newMessages;
                 });
             });
-            
+
             // generate response
             const response = await agentRef.current.generateResponse(prompt);
-            
+
             // update final message and remove streaming state
-            setMessages(prev => {
+            setMessages((prev) => {
                 const newMessages = [...prev];
                 const lastMessage = newMessages[newMessages.length - 1];
                 if (lastMessage.role === 'assistant') {
@@ -263,17 +247,18 @@ export default function Home() {
                 }
                 return newMessages;
             });
-            
+
             setPrompt('');
         } catch (error) {
             console.error('Error during chat:', error);
-            setMessages(prev => [
+            setMessages((prev) => [
                 ...prev,
                 {
                     role: 'assistant',
-                    content: 'Sorry, there was an error processing your request.',
-                    timestamp: new Date()
-                }
+                    content:
+                        'Sorry, there was an error processing your request.',
+                    timestamp: new Date(),
+                },
             ]);
         }
     };
@@ -328,10 +313,11 @@ export default function Home() {
                                             progress.progress < 1)
                                     }
                                     className={`px-4 py-2 bg-sky-400 text-white rounded-lg font-medium
-                                        ${progress.progress > 0 &&
+                                        ${
+                                            progress.progress > 0 &&
                                             progress.progress < 1
-                                            ? 'opacity-50 cursor-not-allowed'
-                                            : 'hover:bg-sky-500 active:bg-sky-600'
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:bg-sky-500 active:bg-sky-600'
                                         }`}
                                 >
                                     Send
@@ -375,12 +361,12 @@ export default function Home() {
                     <div className="w-80 space-y-4">
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />
-                        <NotesPanel 
-                            notes={notes} 
+                        <NotesPanel
+                            notes={notes}
                             onSave={async (updatedNote) => {
                                 // TODO: Implement note updating logic
                                 console.log('Note updated:', updatedNote);
-                            }} 
+                            }}
                         />
                     </div>
                 </div>
