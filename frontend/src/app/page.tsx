@@ -272,7 +272,7 @@ export default function Home() {
                     return newMessages;
                 });
             });
-            
+
             // generate response
             const response = await agentRef.current.generateResponse(currentPrompt);
             
