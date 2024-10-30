@@ -16,6 +16,18 @@ import { InitProgressCallback, prebuiltAppConfig } from '@mlc-ai/web-llm';
 import { Wallet } from '@/wallets';
 import { NetworkId } from '@/config';
 
+type InitProgressCallback = (update: {
+    message: string;
+    progress: number;
+    ragUpdate?: {
+        type: 'email' | 'calendar' | 'document' | 'note';
+        total?: number;
+        completed?: number;
+        error?: number;
+        inProgress?: number;
+    };
+}) => void;
+
 export class Agent {
     private vectorStore: VoyVectorStore | null = null;
     private embeddings: HuggingFaceTransformersEmbeddings | null = null;
@@ -47,7 +59,7 @@ export class Agent {
         });
     }
 
-    private async fetchAllProviderData(): Promise<string[]> {
+    private async fetchAllProviderData(progressCallback?: InitProgressCallback): Promise<string[]> {
         if (!this.wallet) return [];
 
         try {
@@ -58,8 +70,36 @@ export class Agent {
                 args: {}
             });
 
-            // fetch data for each provider
+            let totalItems = 0;
+            // first pass to count total items
+            for (const provider of providers) {
+                const data = await this.wallet.viewMethod({
+                    contractId: 'contract1.iseahorse.testnet',
+                    method: 'get_provider_data',
+                    args: { providerId: provider.id }
+                });
+                totalItems += data.length;
+            }
+
+            // update rag groups with total count
+            if (progressCallback && totalItems > 0) {
+                progressCallback({
+                    message: 'Loading provider data...',
+                    progress: 0.8,
+                    ragUpdate: {
+                        type: 'document',
+                        total: totalItems,
+                        completed: 0,
+                        error: 0,
+                        inProgress: totalItems
+                    }
+                });
+            }
+
+            // fetch and process data
             const allData: string[] = [];
+            let processedItems = 0;
+
             for (const provider of providers) {
                 const data = await this.wallet.viewMethod({
                     contractId: 'contract1.iseahorse.testnet',
@@ -67,15 +107,37 @@ export class Agent {
                     args: { providerId: provider.id }
                 });
 
-                // format each data item with provider context
                 data.forEach((item: { content: string }) => {
                     allData.push(`provider: ${provider.name} (id: ${provider.id})\ncontent: ${item.content}`);
+                    processedItems++;
+                    
+                    if (progressCallback) {
+                        progressCallback({
+                            message: 'Loading provider data...',
+                            progress: 0.8,
+                            ragUpdate: {
+                                type: 'document',
+                                completed: processedItems,
+                                inProgress: totalItems - processedItems
+                            }
+                        });
+                    }
                 });
             }
 
             return allData;
         } catch (error) {
             console.error('Error fetching provider data:', error);
+            if (progressCallback) {
+                progressCallback({
+                    message: 'Error loading provider data',
+                    progress: 0.8,
+                    ragUpdate: {
+                        type: 'document',
+                        error: 1
+                    }
+                });
+            }
             return [];
         }
     }
@@ -119,7 +181,7 @@ export class Agent {
 
             // Load provider data
             progressCallback({ message: 'Loading provider data...', progress: 0.8 });
-            const providerData = await this.fetchAllProviderData();
+            const providerData = await this.fetchAllProviderData(progressCallback);
             
             if (providerData.length > 0) {
                 const docs = providerData.map(content => 
