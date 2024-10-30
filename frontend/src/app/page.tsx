@@ -222,21 +222,24 @@ export default function Home() {
             ]);
             
             // get similar documents
-            const results = await agentRef.current.searchSimilar(prompt, 4);
-            
+            const results = await agentRef.current.searchSimilar(prompt, 10);
+
             // add context messages if any found
             if (results.length > 0) {
-                const contextMessages = results.map(doc => ({
-                    role: 'context' as const,
-                    content: doc.pageContent,
-                    timestamp: new Date(),
-                    metadata: {
-                        type: doc.metadata.type || 'document',
-                        score: doc.metadata.score || 0.8,
-                        title: doc.metadata.title || 'Untitled',
-                    },
-                }));
-                setMessages(prev => [...prev, ...contextMessages]);
+                const contextMessages = results.map((docTuple) => {
+                    const [doc, score] = docTuple;
+                    return {
+                        role: 'context' as const,
+                        content: doc.pageContent,
+                        timestamp: new Date(),
+                        metadata: {
+                            type: doc.metadata.type || 'document',
+                            title: doc.metadata.title || 'Untitled',
+                            score,
+                        },
+                    };
+                });
+                setMessages((prev) => [...prev, ...contextMessages]);
             }
 
             // add empty assistant message for streaming
@@ -262,10 +265,10 @@ export default function Home() {
                     return newMessages;
                 });
             });
-            
+
             // generate response
-            const response = await agentRef.current.generateResponse(prompt);
-            
+            await agentRef.current.generateResponse(prompt);
+
             // update final message and remove streaming state
             setMessages(prev => {
                 const newMessages = [...prev];
