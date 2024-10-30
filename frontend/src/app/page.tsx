@@ -79,6 +79,13 @@ export default function Home() {
         setCurrentStreamingMessage(prev => prev + token);
     }, []);
 
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            query();
+        }
+    }
+
     useEffect(() => {
         const create = async () => {
             setProgress((prev) => ({
@@ -203,6 +210,8 @@ export default function Home() {
     const query = async () => {
         if (!prompt.trim() || !agentRef.current) return;
         
+        const currentPrompt = prompt;
+        setPrompt('');
         messageContentRef.current = ''; // reset message content before starting new chat
         
         try {
@@ -320,6 +329,7 @@ export default function Home() {
                                 <input
                                     value={prompt}
                                     onChange={(e) => setPrompt(e.target.value)}
+                                    onKeyDown={handleKeyPress}
                                     placeholder="Ask me anything..."
                                     className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400"
                                 />
