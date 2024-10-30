@@ -16,7 +16,7 @@ type DataItem = {
 @NearBindgen({})
 class DataProviderContract {
   providers: LookupMap<Provider>;
-  providerData: LookupMap<Vector<DataItem>>;
+  providerData: LookupMap<DataItem[]>;
 
   constructor() {
     this.providers = new LookupMap('p');
@@ -39,7 +39,7 @@ class DataProviderContract {
     
     const provider: Provider = { id, name, valueScore, walletAddress };
     this.providers.set(id, provider);
-    this.providerData.set(id, new Vector(`v_${id}`));
+    this.providerData.set(id, []);
     
     near.log(`Successfully added provider ${id}`);
   }
@@ -69,19 +69,15 @@ class DataProviderContract {
     near.log(`Starting add_provider_data for provider: ${providerId}`);
     near.log(`Number of items to add: ${data.length}`);
     
-    const providerDataVector = this.providerData.get(providerId);
-    if (!providerDataVector) {
-      near.log(`Provider ${providerId} not found`);
-      throw new Error("Provider not found");
-    }
+   const existingData = this.providerData.get(providerId) || []; 
 
-    const newVector = new Vector<DataItem>(`v_${providerId}`);
-    for (const item of data) {
-      near.log(`Adding item: ${item.id}, content length: ${item.content.length}`);
-      newVector.push(item);
-    }
+   if (!existingData) {
+        near.log(`Provider ${providerId} not found`);
+        throw new Error("Provider not found");
+   }
     
-    this.providerData.set(providerId, newVector);
+    const newData = [...existingData, ...data];
+    this.providerData.set(providerId, newData);
     near.log(`Successfully added ${data.length} items for provider ${providerId}`);
   }
 
@@ -90,22 +86,16 @@ class DataProviderContract {
     near.log(`Starting remove_provider_data for provider: ${providerId}`);
     near.log(`Items to remove: ${dataIds.join(', ')}`);
     
-    const providerDataVector = this.providerData.get(providerId);
-    if (!providerDataVector) {
+    const existingData = this.providerData.get(providerId);
+    if (!existingData) {
       near.log(`Provider ${providerId} not found`);
       throw new Error("Provider not found");
     }
-    
-    const newData = providerDataVector.toArray().filter(item => !dataIds.includes(item.id));
+
+    const newData = existingData.filter(item => !dataIds.includes(item.id));
     near.log(`Items remaining after filter: ${newData.length}`);
     
-    const newVector = new Vector<DataItem>(`v_${providerId}`);
-    for (const item of newData) {
-      near.log(`Keeping item: ${item.id}`);
-      newVector.push(item as DataItem);
-    }
-    
-    this.providerData.set(providerId, newVector as Vector<DataItem>);
+    this.providerData.set(providerId, newData);
     near.log(`Successfully removed specified items for provider ${providerId}`);
   }
 
@@ -158,14 +148,13 @@ class DataProviderContract {
   @view({})
   get_provider_data({ providerId }: { providerId: string }): DataItem[] {
     near.log(`Getting data for provider: ${providerId}`);
-    const providerDataVector = this.providerData.get(providerId);
-    if (providerDataVector) {
-      const data = providerDataVector.toArray();
-      near.log(`Found ${data.length} items for provider ${providerId}`);
-      return data;
+    const data = this.providerData.get(providerId);
+    if (data) {
+        near.log(`Found ${data.length} items for provider ${providerId}`);
+        return data;
     } else {
-      near.log(`No data found for provider ${providerId}`);
-      return [];
+        near.log(`Provider ${providerId} not found`);
+        return [];
     }
   }
 }
