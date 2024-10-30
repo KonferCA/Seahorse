@@ -299,13 +299,20 @@ export class Agent {
         
         try {
             const results = await this.vectorStore!.similaritySearch(query, k);
-            console.log('search results:', results);
+            console.log('raw search results:', results);
+            
+            // get similarity scores from the _similarity property
             return results.map(result => {
+                // voy returns similarity scores directly (higher is better)
+                const score = (result as any)._similarity || 0;
+                
+                console.log(`Document: ${result.pageContent.substring(0, 50)}... Score: ${score}`);
+                
                 return {
                     pageContent: result.pageContent,
                     metadata: {
                         ...result.metadata,
-                        score: result.score
+                        score: score
                     }
                 };
             });
