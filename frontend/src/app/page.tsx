@@ -439,14 +439,14 @@ export default function Home() {
         <NearAuthGate>
             <main className="min-h-screen bg-gray-50 p-8">
                 <div className="max-w-6xl mx-auto flex gap-4">
-                    <div className="flex-1 bg-white rounded-lg shadow-lg">
+                    <div className="flex-1 bg-white rounded-lg shadow-lg flex flex-col">
                         <div className="p-4 border-b border-gray-200">
                             <h2 className="text-xl font-semibold text-gray-800">
                                 AI Assistant
                             </h2>
                         </div>
 
-                        <div className="h-[60vh] overflow-y-auto p-4">
+                        <div className="flex-1 flex flex-col">
                             <Chat
                                 messages={messages}
                                 onSendMessage={query}
