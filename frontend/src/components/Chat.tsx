@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef } from 'react';
-import { Prism as SyntaxHighligher } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import ReactMarkdown from 'react-markdown';
 
 export type Message = {
@@ -55,18 +55,18 @@ export function Chat({ messages, onSendMessage, isLoading }: ChatProps) {
                     >
                         <ReactMarkdown
                             components={{
-                                code({node, inline, className, children, ...props}: {node: any, inline: boolean, className: string, children: React.ReactNode}) {
+                                code({node, inline, className, children, ...props}) {
                                     const match = /language-(\w+)/.exec(className || '');
                                     
                                     return !inline && match ? (
-                                        <SyntaxHighligher
+                                        <SyntaxHighlighter
                                             style={oneDark}
                                             language={match[1]}
                                             PreTag="div"
                                             {...props}
                                         >
                                             {String(children).replace(/\n$/, '')}
-                                        </SyntaxHighligher>
+                                        </SyntaxHighlighter>
                                     ) : (
                                         <code className={className} {...props}>
                                             {children}
