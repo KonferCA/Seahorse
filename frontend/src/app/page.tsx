@@ -183,6 +183,9 @@ export default function Home() {
         if (!prompt.trim() || !agentRef.current) return;
 
         try {
+            // reset message content ref
+            messageContentRef.current = '';
+            
             setMessages(prev => [
                 ...prev,
                 { role: 'user', content: prompt, timestamp: new Date() }
