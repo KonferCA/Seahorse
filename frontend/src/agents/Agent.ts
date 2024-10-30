@@ -197,10 +197,18 @@ export class Agent {
             // Load provider data
             progressCallback({ message: 'Loading provider data...', progress: 0.8 });
             const providerData = await this.fetchAllProviderData(progressCallback);
+            console.log('provider data before vector store:', providerData);
             
             if (providerData.length > 0) {
-                await this.vectorStore.addDocuments(providerData);
-                this.isVectorStoreEmpty = false;
+                try {
+                    console.log('attempting to add documents to vector store');
+                    await this.vectorStore.addDocuments(providerData);
+                    console.log('documents successfully added to vector store');
+                    this.isVectorStoreEmpty = false;
+                } catch (error) {
+                    console.error('Error adding documents to vector store:', error);
+                    throw error;
+                }
             }
 
             // Initialize chains
@@ -281,26 +289,30 @@ export class Agent {
     }
 
     async searchSimilar(query: string, k: number) {
-        if (this.isVectorStoreEmpty) return [];
+        console.log('searching with query:', query);
+        console.log('vectorStore empty?', this.isVectorStoreEmpty);
+        
+        if (this.isVectorStoreEmpty) {
+            console.log('vector store is empty, returning no results');
+            return [];
+        }
+        
         try {
             const results = await this.vectorStore!.similaritySearch(query, k);
-            // transform results into proper Document objects with scores
+            console.log('search results:', results);
             return results.map(result => {
-                // ensure we have all required fields
-                if (!result.chunk) return null;
-                
                 return {
-                    pageContent: result.chunk,
+                    pageContent: result.pageContent,
                     metadata: {
                         ...result.metadata,
                         score: result.score
                     }
                 };
-            }).filter(Boolean); // remove any null results
+            });
         } catch (error) {
-            console.log(error);
+            console.error('Error in similaritySearch:', error);
+            return [];
         }
-        return [];
     }
 
     async generateResponse(question: string): Promise<string> {
