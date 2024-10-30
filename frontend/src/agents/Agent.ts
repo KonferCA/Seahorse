@@ -1,6 +1,6 @@
 import { HuggingFaceTransformersEmbeddings } from '@langchain/community/embeddings/hf_transformers';
 import { VoyVectorStore } from '@langchain/community/vectorstores/voy';
-import { Document } from '@langchain/core/documents';
+import { Document, DocumentInterface } from '@langchain/core/documents';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { Voy as VoyClient } from 'voy-search';
 import { ChatWebLLM } from '@langchain/community/chat_models/webllm';
@@ -27,6 +27,29 @@ type InitProgressCallback = (update: {
         inProgress?: number;
     };
 }) => void;
+
+const SYSTEM_PROMPT_TEMPLATE = `
+You are a helpful and supportive AI friend.
+
+
+You know that today is {today}. Use this date as a point of reference when the user's question involves dates.
+
+
+Do not make up things.
+Be concise in your answers.
+Do not ramble. Keep the word count under 100 words.
+
+
+When you don't know the answer, use the following context to answer the user's question. Context: {context}
+`;
+
+const DEFAULT_SYSTEM_PROMPT_TEMPLATE = `
+You are a helpful and supportive AI friend. Today is {today}. Please answer the question to the best of your abilities.
+
+Do not make up things.
+Be concise in your answers.
+Do not ramble. Keep the word count under 100 words.
+`;
 
 export class Agent {
     private vectorStore: VoyVectorStore | null = null;
@@ -216,9 +239,7 @@ export class Agent {
             
             // Create RAG prompt template
             const prompt = ChatPromptTemplate.fromMessages([
-                SystemMessagePromptTemplate.fromTemplate(
-                    "You are a helpful AI assistant. Use the following context to answer the user's question.\n\nContext: {context}\n\nLimit your answers to maximum of 50 words."
-                ),
+                SystemMessagePromptTemplate.fromTemplate(SYSTEM_PROMPT_TEMPLATE),
                 HumanMessagePromptTemplate.fromTemplate('{question}'),
             ]);
 
@@ -226,30 +247,28 @@ export class Agent {
             this.ragChain = RunnableSequence.from([
                 {
                     context: async (input: { question: string }) => {
+                        if (this.isVectorStoreEmpty) return '';
                         const docs = await this.searchSimilar(input.question, 10);
-                        docs.forEach((doc) => console.log(doc.pageContent));
-                        // console.log(formatDocumentsAsString(docs));
                         return formatDocumentsAsString(docs);
                     },
                     question: (input: { question: string }) => input.question,
+                    today: () => new Date().toDateString(),
                 },
                 prompt,
                 this.llm,
                 new StringOutputParser(),
             ]);
 
-            // Create default prompt template for when no context is available
+            // Create default chain for when no context is available
             const defaultPrompt = ChatPromptTemplate.fromMessages([
-                SystemMessagePromptTemplate.fromTemplate(
-                    "You are a helpful AI assistant. Please answer the user's question to the best of your ability. Limit your answers to maximum of 50 words."
-                ),
+                SystemMessagePromptTemplate.fromTemplate(DEFAULT_SYSTEM_PROMPT_TEMPLATE),
                 HumanMessagePromptTemplate.fromTemplate('{question}'),
             ]);
 
-            // Create default chain, use for when there is nothing in the RAG chain.
             this.defaultChain = RunnableSequence.from([
                 {
                     question: (input: { question: string }) => input.question,
+                    today: () => new Date().toDateString(),
                 },
                 defaultPrompt,
                 this.llm,
@@ -276,7 +295,8 @@ export class Agent {
                         metadata: { source: 'note', type: 'note' },
                     })
             );
-            const documents = await this.textSplitter!.splitDocuments(rawDocuments);
+            const documents =
+                await this.textSplitter!.splitDocuments(rawDocuments);
             if (this.vectorStore !== null) {
                 await this.vectorStore.addDocuments(documents);
             }
@@ -298,96 +318,61 @@ export class Agent {
         }
         
         try {
-            const results = await this.vectorStore!.similaritySearch(query, k);
-            console.log('raw search results:', results);
-            
-            // get similarity scores from the _similarity property
-            return results.map(result => {
-                // voy returns similarity scores directly (higher is better)
-                const score = (result as any)._similarity || 0;
-                
-                console.log(`Document: ${result.pageContent.substring(0, 50)}... Score: ${score}`);
-                
-                return {
-                    pageContent: result.pageContent,
-                    metadata: {
-                        ...result.metadata,
-                        score: score
-                    }
-                };
-            });
+            const queryVector = await this.embeddings!.embedQuery(query);
+            const results = this.vectorStore!.client.search(
+                new Float32Array(queryVector),
+                k
+            );
+
+            const topK: [DocumentInterface<Record<string, any>>, number][] =
+                results.neighbors.map(({ id }) => {
+                    const docIdx = parseInt(id, 10);
+                    const doc = this.vectorStore!.docstore[docIdx].document;
+                    const score = this.cosineSimilarity(
+                        queryVector,
+                        this.vectorStore!.docstore[docIdx].embeddings
+                    );
+                    return [doc, score];
+                });
+
+            console.log(topK);
+
+            return topK;
         } catch (error) {
             console.error('Error in similaritySearch:', error);
             return [];
         }
     }
 
+    private cosineSimilarity(vecA: number[], vecB: number[]) {
+        if (vecA.length !== vecB.length) {
+            throw new Error('Vectors must have the same length');
+        }
+
+        // Calculate dot product
+        const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+
+        // Calculate magnitudes
+        const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+        const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+
+        // Calculate cosine similarity
+        return dotProduct / (magnitudeA * magnitudeB);
+    }
+
     async generateResponse(question: string): Promise<string> {
-        const streamingCallback: AIStreamCallbacksAndOptions = {
+        const streamingCallback = {
             handleLLMNewToken: (token: string) => {
                 this.onToken?.(token);
             },
         };
 
         try {
-            const docs = await this.searchSimilar(question, 10);
-            
-            // process payouts if we have relevant documents
-            if (docs.length > 0) {
-                // prepare relevancy data for contract
-                const providerScores: { [key: string]: number } = {};
-                
-                // get highest relevancy score for each provider
-                for (const doc of docs) {
-                    console.log('Processing doc:', doc); // debug
-                    if (doc.metadata?.providerId) {
-                        const providerId = doc.metadata.providerId;
-                        // ensure we have a valid number between 0 and 1
-                        const score = typeof doc.metadata.score === 'number' ? doc.metadata.score : 0;
-                        // normalize score to 0-100 range
-                        const normalizedScore = Math.floor(score * 100);
-                        
-                        if (!providerScores[providerId] || normalizedScore > providerScores[providerId]) {
-                            providerScores[providerId] = normalizedScore;
-                        }
-                    }
-                }
-
-                // prepare data for contract call
-                const queryResults = Object.entries(providerScores).map(([providerId, score]) => ({
-                    providerId,
-                    relevancyScore: score
-                }));
-
-                console.log('Sending payout data:', queryResults); // debug
-
-                // call contract to process payouts
-                if (queryResults.length > 0 && this.wallet) {
-                    try {
-                        await this.wallet.callMethod({
-                            contractId: 'contract1.iseahorse.testnet',
-                            method: 'process_query',
-                            args: { queryResults }
-                        });
-                        console.log('Payout processed successfully'); // debug
-                    } catch (error) {
-                        console.error('Error processing provider payouts:', error);
-                    }
-                }
-                
-                // generate response
-                const response = await this.ragChain!.invoke(
-                    { question },
-                    { callbacks: [streamingCallback] }
-                );
-                return response;
-            } else {
-                const response = await this.defaultChain!.invoke(
-                    { question },
-                    { callbacks: [streamingCallback] }
-                );
-                return response;
-            }
+            const response = await this.ragChain!.invoke(
+                { question },
+                { callbacks: [streamingCallback] }
+            );
+            return response;
         } catch (error) {
             console.error('Error generating response:', error);
             throw error;
@@ -400,8 +385,8 @@ export class Agent {
 
     async generateDirectResponse(prompt: string): Promise<string> {
         try {
-            const response = await this.defaultChain.invoke({
-                question: prompt
+            const response = await this.defaultChain!.invoke({
+                question: prompt,
             });
             return response;
         } catch (error) {

@@ -80,6 +80,13 @@ export default function Home() {
         setCurrentStreamingMessage(prev => prev + token);
     }, []);
 
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            query();
+        }
+    }
+
     useEffect(() => {
         const create = async () => {
             if (agentRef.current === null) {
@@ -237,6 +244,8 @@ export default function Home() {
     const query = async () => {
         if (!prompt.trim() || !agentRef.current) return;
         
+        const currentPrompt = prompt;
+        setPrompt('');
         messageContentRef.current = ''; // reset message content before starting new chat
         
         try {
@@ -247,21 +256,24 @@ export default function Home() {
             ]);
             
             // get similar documents
-            const results = await agentRef.current.searchSimilar(prompt, 4);
-            
+            const results = await agentRef.current.searchSimilar(prompt, 10);
+
             // add context messages if any found
             if (results.length > 0) {
-                const contextMessages = results.map(doc => ({
-                    role: 'context' as const,
-                    content: doc.pageContent || doc.chunk || '',
-                    timestamp: new Date(),
-                    metadata: {
-                        type: doc.metadata.type || 'document',
-                        score: doc.metadata.score,
-                        title: doc.metadata.title || 'Untitled',
-                    },
-                }));
-                setMessages(prev => [...prev, ...contextMessages]);
+                const contextMessages = results.map((docTuple) => {
+                    const [doc, score] = docTuple;
+                    return {
+                        role: 'context' as const,
+                        content: doc.pageContent,
+                        timestamp: new Date(),
+                        metadata: {
+                            type: doc.metadata.type || 'document',
+                            title: doc.metadata.title || 'Untitled',
+                            score,
+                        },
+                    };
+                });
+                setMessages((prev) => [...prev, ...contextMessages]);
             }
 
             // add empty assistant message for streaming
@@ -287,10 +299,10 @@ export default function Home() {
                     return newMessages;
                 });
             });
-            
+
             // generate response
-            const response = await agentRef.current.generateResponse(prompt);
-            
+            await agentRef.current.generateResponse(prompt);
+
             // update final message and remove streaming state
             setMessages(prev => {
                 const newMessages = [...prev];
@@ -440,6 +452,7 @@ export default function Home() {
                                 <input
                                     value={prompt}
                                     onChange={(e) => setPrompt(e.target.value)}
+                                    onKeyDown={handleKeyPress}
                                     placeholder="Ask me anything..."
                                     className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400"
                                 />

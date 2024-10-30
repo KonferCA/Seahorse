@@ -10,6 +10,7 @@ type GoogleDataPanelProps = {
 export default function GoogleDataPanel({ onDataReceived }: GoogleDataPanelProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [isConnected, setIsConnected] = useState(false);
 
     const login = useGoogleLogin({
         onSuccess: (tokenResponse) => {
@@ -32,6 +33,7 @@ export default function GoogleDataPanel({ onDataReceived }: GoogleDataPanelProps
             if (response.ok) {
                 const data = await response.json();
                 onDataReceived(data.calendar, data.emails);
+                setIsConnected(true);
             } else {
                 const errorData = await response.json();
                 setError(errorData.error || 'Failed to fetch data');
@@ -52,9 +54,11 @@ export default function GoogleDataPanel({ onDataReceived }: GoogleDataPanelProps
 
             <button
                 onClick={() => login()}
-                disabled={isLoading}
+                disabled={ isLoading || isConnected }
                 className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border 
-                    ${isLoading
+                    ${isConnected 
+                        ? 'bg-green-50 border-green-200 text-green-700 cursor-not-allowed'
+                        : isLoading
                         ? 'bg-gray-100 border-gray-200 cursor-not-allowed'
                         : 'bg-white border-gray-300 hover:bg-gray-50'
                     }`}
@@ -67,7 +71,12 @@ export default function GoogleDataPanel({ onDataReceived }: GoogleDataPanelProps
                     height={20}
                 />
                 <span className="text-gray-700 font-medium">
-                    {isLoading ? 'Connecting...' : 'Connect Google Account'}
+                    {isConnected
+                        ? 'Google Account Connected'
+                        : isLoading
+                        ? 'Connecting...'
+                        : 'Connect Google Account' 
+                    }
                 </span>
             </button>
 
