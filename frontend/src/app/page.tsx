@@ -91,14 +91,55 @@ export default function Home() {
 
                 try {
                     const agent = new Agent(selectedModel);
-                    await agent.initialize((update) => {
+                    
+                    // wrap the progress callback to ensure continuity
+                    const progressWrapper = (update: any) => {
                         setProgress(prev => ({
-                            progress: update.progress * 100, // convert to percentage
+                            progress: Math.max(prev.progress, update.progress * 100), // prevent progress from going backwards
                             text: update.message,
                             timeElapsed: prev.timeElapsed
                         }));
-                    });
+
+                        // handle rag updates
+                        if (update.ragUpdate) {
+                            setRagGroups(prev => {
+                                const existingGroup = prev.find(g => g.type === update.ragUpdate!.type);
+                                
+                                if (!existingGroup && update.ragUpdate?.total) {
+                                    return [...prev, {
+                                        type: update.ragUpdate.type,
+                                        total: update.ragUpdate.total,
+                                        completed: update.ragUpdate.completed || 0,
+                                        error: update.ragUpdate.error || 0,
+                                        inProgress: update.ragUpdate.inProgress || 0
+                                    }];
+                                } else if (existingGroup) {
+                                    return prev.map(group => 
+                                        group.type === update.ragUpdate!.type
+                                            ? {
+                                                ...group,
+                                                ...(update.ragUpdate?.total !== undefined && { total: update.ragUpdate.total }),
+                                                ...(update.ragUpdate?.completed !== undefined && { completed: update.ragUpdate.completed }),
+                                                ...(update.ragUpdate?.error !== undefined && { error: update.ragUpdate.error }),
+                                                ...(update.ragUpdate?.inProgress !== undefined && { inProgress: update.ragUpdate.inProgress })
+                                            }
+                                            : group
+                                    );
+                                }
+                                return prev;
+                            });
+                        }
+                    };
+
+                    await agent.initialize(progressWrapper);
                     agentRef.current = agent;
+                    
+                    // set final progress
+                    setProgress(prev => ({
+                        progress: 100,
+                        text: 'Ready',
+                        timeElapsed: prev.timeElapsed
+                    }));
                 } catch (error) {
                     console.error('Error initializing:', error);
                     setProgress({
@@ -293,12 +334,53 @@ export default function Home() {
         });
     };
 
-    const handleProgress = useCallback((update: { message: string; progress: number }) => {
+    const handleProgress = useCallback((update: { 
+        message: string; 
+        progress: number;
+        ragUpdate?: {
+            type: string;
+            total?: number;
+            completed?: number;
+            error?: number;
+            inProgress?: number;
+        };
+    }) => {
         setProgress(prev => ({
             progress: update.progress * 100,
             text: update.message,
-            timeElapsed: prev.timeElapsed // maintain existing timeElapsed
+            timeElapsed: prev.timeElapsed
         }));
+
+        if (update.ragUpdate) {
+            setRagGroups(prev => {
+                const existingGroup = prev.find(g => g.type === update.ragUpdate!.type);
+                
+                if (!existingGroup && update.ragUpdate?.total) {
+                    // add new group
+                    return [...prev, {
+                        type: update.ragUpdate.type as any,
+                        total: update.ragUpdate.total,
+                        completed: update.ragUpdate.completed || 0,
+                        error: update.ragUpdate.error || 0,
+                        inProgress: update.ragUpdate.inProgress || 0
+                    }];
+                } else if (existingGroup) {
+                    // update existing group
+                    return prev.map(group => 
+                        group.type === update.ragUpdate!.type
+                            ? {
+                                ...group,
+                                ...(update.ragUpdate?.total !== undefined && { total: update.ragUpdate.total }),
+                                ...(update.ragUpdate?.completed !== undefined && { completed: update.ragUpdate.completed }),
+                                ...(update.ragUpdate?.error !== undefined && { error: update.ragUpdate.error }),
+                                ...(update.ragUpdate?.inProgress !== undefined && { inProgress: update.ragUpdate.inProgress })
+                            }
+                            : group
+                    );
+                }
+                return prev;
+            });
+        }
     }, []);
 
     // Add timer effect
