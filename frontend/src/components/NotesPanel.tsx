@@ -20,11 +20,13 @@ interface NotesPanelProps {
 export default function NotesPanel({ notes, onSave }: NotesPanelProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [editedContent, setEditedContent] = useState('');
+  const [editedTitle, setEditedTitle] = useState('');
 
   // handle opening a note for editing
   const handleNoteClick = (note: Note) => {
     setSelectedNote(note);
     setEditedContent(note.content);
+    setEditedTitle(note.title);
   };
 
   // handle saving edits
@@ -32,6 +34,7 @@ export default function NotesPanel({ notes, onSave }: NotesPanelProps) {
     if (selectedNote) {
       onSave({
         ...selectedNote,
+        title: editedTitle,
         content: editedContent,
         timestamp: Date.now()
       });
@@ -75,7 +78,11 @@ export default function NotesPanel({ notes, onSave }: NotesPanelProps) {
               className="bg-white rounded-lg p-6 w-full max-w-2xl"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">{selectedNote.title}</h3>
+                <input
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  className="text-xl font-semibold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-sky-500 focus:outline-none px-1"
+                />
                 <button 
                   onClick={() => setSelectedNote(null)}
                   className="text-gray-500 hover:text-gray-700"
