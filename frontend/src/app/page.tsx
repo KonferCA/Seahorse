@@ -17,6 +17,8 @@ import { useNotes } from '@/hooks/useNotes';
 import { Agent } from '@/agents/Agent';
 import VoiceModal from '@/components/VoiceModal';
 import AdminPanel from '@/components/AdminPanel';
+import PayoutPanel from '@/components/PayoutPanel';
+import { ProviderTracker } from '@/services/ProviderTracker';
 
 type ProgressState = {
     progress: number;
@@ -246,34 +248,49 @@ export default function Home() {
         
         const currentPrompt = prompt;
         setPrompt('');
-        messageContentRef.current = ''; // reset message content before starting new chat
+        messageContentRef.current = '';
         
         try {
-            // add user message
             setMessages(prev => [
                 ...prev,
                 { role: 'user', content: prompt, timestamp: new Date() }
             ]);
             
-            // get similar documents
             const results = await agentRef.current.searchSimilar(prompt, 10);
+            
+            // track provider usage - only track highest score per provider per query
+            const tracker = new ProviderTracker();
+            const providerScores = new Map<string, number>();
+
+            // first find highest score per provider
+            for (const [doc, score] of results) {
+                if (doc.metadata?.source === 'provider' && doc.metadata?.providerId) {
+                    const currentHighest = providerScores.get(doc.metadata.providerId) || 0;
+                    if (score > currentHighest) {
+                        providerScores.set(doc.metadata.providerId, score);
+                    }
+                }
+            }
+
+            // then log only the highest scores
+            for (const [providerId, score] of providerScores) {
+                const normalizedScore = Math.min(Math.max(score, 0), 1);
+                await tracker.logProviderUsage(providerId, normalizedScore);
+            }
 
             // add context messages if any found
             if (results.length > 0) {
-                const contextMessages = results.map((docTuple) => {
-                    const [doc, score] = docTuple;
-                    return {
-                        role: 'context' as const,
-                        content: doc.pageContent,
-                        timestamp: new Date(),
-                        metadata: {
-                            type: doc.metadata.type || 'document',
-                            title: doc.metadata.title || 'Untitled',
-                            score,
-                        },
-                    };
-                });
-                setMessages((prev) => [...prev, ...contextMessages]);
+                const contextMessages = results.map(([doc, score]) => ({
+                    role: 'context' as const,
+                    content: doc.pageContent,
+                    timestamp: new Date(),
+                    metadata: {
+                        type: doc.metadata?.type || 'document',
+                        title: doc.metadata?.title || 'Untitled',
+                        score
+                    }
+                }));
+                setMessages(prev => [...prev, ...contextMessages]);
             }
 
             // add empty assistant message for streaming
@@ -481,6 +498,7 @@ export default function Home() {
                         <AdminPanel />
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />
+                        <PayoutPanel />
                         <NotesPanel 
                             notes={notes} 
                             onSave={saveNote}
