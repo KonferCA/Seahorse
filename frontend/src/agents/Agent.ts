@@ -144,7 +144,7 @@ export class Agent {
     }
 
     async generateResponse(question: string): Promise<string> {
-        const streamingCallback: AIStreamCallbacksAndOptions = {
+        const streamingCallback = {
             handleLLMNewToken: (token: string) => {
                 this.onToken?.(token);
             },
