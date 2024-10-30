@@ -26,7 +26,7 @@ Be concise in your answers.
 Do not ramble. Keep the word count under 100 words.
 
 
-When you are don't know the answer, use the following context to answer the user's question. Context: {context}
+When you don't know the answer, use the following context to answer the user's question. Context: {context}
 `;
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE = `
