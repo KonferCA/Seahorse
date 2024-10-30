@@ -41,8 +41,11 @@ export default function AdminPanel() {
                 createAccessKeyFor: 'contract1.iseahorse.testnet' 
             });
             
-            // ensure wallet is initialized
-            await walletInstance.startUp();
+            // add callback function for account changes
+            await walletInstance.startUp((accountId: string) => {
+                console.log('Account changed:', accountId);
+            });
+            
             setWallet(walletInstance);
             // Fetch providers when wallet is initialized
             fetchAllProviders();
