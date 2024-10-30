@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { providers, utils } from 'near-api-js';
 import { NetworkId } from '@/config';
+import toast from 'react-hot-toast';
 
 interface TransactionOutcome {
   status: {
@@ -77,12 +78,6 @@ const formatNearAmount = (amount: string): string => {
 };
 
 export function useTransactionToast() {
-  const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'error' | 'info';
-    details?: string;
-  } | null>(null);
-  
   const searchParams = useSearchParams();
   
   useEffect(() => {
@@ -90,12 +85,14 @@ export function useTransactionToast() {
     if (!txHash) return;
 
     const fetchTransaction = async () => {
+      const toastId = toast.loading('Processing transaction...');
+      
       try {
         const provider = new providers.JsonRpcProvider({
           url: `https://rpc.${NetworkId}.near.org`
         });
 
-        const txStatus: TransactionOutcome = await provider.txStatus(txHash, 'unnused');
+        const txStatus = await provider.txStatus(txHash, 'unnused');
         const gasUsed = txStatus.transaction_outcome.outcome.gas_burnt / 1e12;
         
         if (txStatus.status.SuccessValue !== undefined) {
@@ -111,8 +108,7 @@ export function useTransactionToast() {
               args,
               txStatus.transaction.receiver_id
             );
-
-            // add deposit info if present
+            
             if (action.FunctionCall.deposit) {
               details += `Deposit: ${formatNearAmount(action.FunctionCall.deposit)}\n`;
             }
@@ -123,42 +119,26 @@ export function useTransactionToast() {
             message = 'Transaction successful';
           }
 
-          // add common transaction details
-          details += `From: ${txStatus.transaction.signer_id}\n`;
-          details += `Contract: ${txStatus.transaction.receiver_id}\n`;
-          details += `Gas used: ${gasUsed.toFixed(2)} TGas\n`;
-          details += `Transaction Hash: ${txHash}`;
-
-          // try to decode success value if present
-          try {
-            const decodedResult = atob(txStatus.status.SuccessValue);
-            if (decodedResult && decodedResult !== 'null') {
-              details += `\nResult: ${decodedResult}`;
-            }
-          } catch (e) {}
-
-          setToast({
-            message,
-            type: 'success',
-            details
+          toast.success(message, {
+            id: toastId,
+            duration: 5000,
+            description: details
           });
         } else if (txStatus.status.Failure) {
           const errorMessage = typeof txStatus.status.Failure === 'string' 
             ? txStatus.status.Failure 
             : JSON.stringify(txStatus.status.Failure, null, 2);
 
-          setToast({
-            message: 'Transaction failed',
-            type: 'error',
-            details: `Error: ${errorMessage}\nContract: ${txStatus.transaction.receiver_id}`
+          toast.error('Transaction failed', {
+            id: toastId,
+            description: `Error: ${errorMessage}\nContract: ${txStatus.transaction.receiver_id}`
           });
         }
       } catch (error) {
         console.error('Error fetching transaction:', error);
-        setToast({
-          message: 'Error fetching transaction details',
-          type: 'error',
-          details: error instanceof Error ? error.message : 'Unknown error'
+        toast.error('Error fetching transaction details', {
+          id: toastId,
+          description: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     };
@@ -166,7 +146,5 @@ export function useTransactionToast() {
     fetchTransaction();
   }, [searchParams]);
 
-  const clearToast = () => setToast(null);
-
-  return { toast, clearToast };
+  return { toast };
 } 
