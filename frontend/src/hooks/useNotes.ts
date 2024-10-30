@@ -47,14 +47,7 @@ export const useNotes = ({ agent, setRagGroups }: UseNotesProps) => {
         for (const note of parsedNotes) {
           try {
             const docId = await agent.embedTexts([note.content]);
-
-            const embedding = await agent.embedTexts([note.content]);
-
-            await agent.addEmbedding(
-              Array.from(embedding.data),
-              docId
-            );
-
+            
             setRagGroups(prev => prev.map(group => 
               group.type === 'note' 
                 ? { 
@@ -87,14 +80,20 @@ export const useNotes = ({ agent, setRagGroups }: UseNotesProps) => {
     if (!agent) return 'Untitled Note';
 
     try {
-      const response = await agent.generateResponse(
-        'create a 3-5 word title summarizing this note. respond with just the title.'
+      const response = await agent.generateDirectResponse(
+        `create a 3-5 word title summarizing this note: "${content}". respond with just the title.`
       );
-      return response || 'Untitled Note';
+      return (response || 'Untitled Note').replace(/"/g, '');
     } catch (error) {
       console.error('error generating title:', error);
       return 'Untitled Note';
     }
+  };
+
+  const deleteNote = async (noteId: string) => {
+    const updatedNotes = notes.filter(note => note.id !== noteId);
+    setNotes(updatedNotes);
+    localStorage.setItem('voice_notes', JSON.stringify(updatedNotes));
   };
 
   const saveNote = async (content: string) => {
@@ -108,22 +107,22 @@ export const useNotes = ({ agent, setRagGroups }: UseNotesProps) => {
 
     if (agent) {
       try {
-        await agent.embedTexts([content]);
+        const docCount = await agent.embedTexts([content]);
         setRagGroups(prev => {
           const existingGroup = prev.find(g => g.type === 'note');
           if (existingGroup) {
             return prev.map(g => 
               g.type === 'note' 
-                ? { ...g, total: g.total + 1, inProgress: g.inProgress + 1 }
+                ? { ...g, total: g.total + 1, completed: 1 }
                 : g
             );
           }
           return [...prev, {
             type: 'note',
             total: 1,
-            completed: 0,
+            completed: 1,
             error: 0,
-            inProgress: 1
+            inProgress: 0
           }];
         });
       } catch (error) {
@@ -132,10 +131,9 @@ export const useNotes = ({ agent, setRagGroups }: UseNotesProps) => {
           group.type === 'note' 
             ? { 
                 ...group, 
-                error: group.error + 1,
-                inProgress: group.inProgress - 1
+                error: group.error + 1
               }
-            : group
+              : group
         ));
       }
     }
@@ -145,5 +143,5 @@ export const useNotes = ({ agent, setRagGroups }: UseNotesProps) => {
     localStorage.setItem('voice_notes', JSON.stringify(updatedNotes));
   };
 
-  return { notes, saveNote };
+  return { notes, saveNote, deleteNote };
 };

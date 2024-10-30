@@ -15,16 +15,19 @@ interface Note {
 interface NotesPanelProps {
   notes: Note[];
   onSave: (note: Note) => void;
+  onDelete: (noteId: string) => void;
 }
 
-export default function NotesPanel({ notes, onSave }: NotesPanelProps) {
+export default function NotesPanel({ notes, onSave, onDelete }: NotesPanelProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [editedContent, setEditedContent] = useState('');
+  const [editedTitle, setEditedTitle] = useState('');
 
   // handle opening a note for editing
   const handleNoteClick = (note: Note) => {
     setSelectedNote(note);
     setEditedContent(note.content);
+    setEditedTitle(note.title);
   };
 
   // handle saving edits
@@ -32,6 +35,7 @@ export default function NotesPanel({ notes, onSave }: NotesPanelProps) {
     if (selectedNote) {
       onSave({
         ...selectedNote,
+        title: editedTitle,
         content: editedContent,
         timestamp: Date.now()
       });
@@ -75,7 +79,11 @@ export default function NotesPanel({ notes, onSave }: NotesPanelProps) {
               className="bg-white rounded-lg p-6 w-full max-w-2xl"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">{selectedNote.title}</h3>
+                <input
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  className="text-xl font-semibold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-sky-500 focus:outline-none px-1"
+                />
                 <button 
                   onClick={() => setSelectedNote(null)}
                   className="text-gray-500 hover:text-gray-700"
@@ -90,19 +98,32 @@ export default function NotesPanel({ notes, onSave }: NotesPanelProps) {
                 className="w-full h-64 p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-sky-400"
               />
 
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-between gap-2">
                 <button
-                  onClick={() => setSelectedNote(null)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  onClick={() => {
+                    if (selectedNote) {
+                      onDelete(selectedNote.id);
+                      setSelectedNote(null);
+                    }
+                  }}
+                  className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg"
                 >
-                  Cancel
+                  Delete Note
                 </button>
-                <button
-                  onClick={handleSave}
-                  className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg"
-                >
-                  Save Changes
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedNote(null)}
+                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg"
+                  >
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

@@ -15,6 +15,7 @@ import type { GroupProgress } from '@/components/RAGStatusPanel';
 import NotesPanel from '@/components/NotesPanel';
 import { useNotes } from '@/hooks/useNotes';
 import { Agent } from '@/agents/Agent';
+import VoiceModal from '@/components/VoiceModal';
 
 type ProgressState = {
     progress: number;
@@ -63,7 +64,7 @@ export default function Home() {
 
     const agentRef = useRef<Agent | null>(null);
 
-    const { notes, saveNote } = useNotes({ 
+    const { notes, saveNote, deleteNote } = useNotes({ 
         agent: agentRef.current,
         setRagGroups 
     });
@@ -71,6 +72,8 @@ export default function Home() {
     const [currentStreamingMessage, setCurrentStreamingMessage] = useState('');
 
     const messageContentRef = useRef('');
+
+    const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
     const handleStream = useCallback((token: string) => {
         setCurrentStreamingMessage(prev => prev + token);
@@ -321,6 +324,12 @@ export default function Home() {
                                     className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400"
                                 />
                                 <button
+                                    onClick={() => setIsVoiceModalOpen(true)}
+                                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium"
+                                >
+                                    🎤
+                                </button>
+                                <button
                                     onClick={query}
                                     disabled={
                                         !prompt.trim() ||
@@ -337,6 +346,19 @@ export default function Home() {
                                     Send
                                 </button>
                             </div>
+
+                            <VoiceModal
+                                isOpen={isVoiceModalOpen}
+                                onClose={() => setIsVoiceModalOpen(false)}
+                                onSave={async (text) => {
+                                    await saveNote(text);
+                                    setIsVoiceModalOpen(false);
+                                }}
+                                onSend={(text) => {
+                                    setPrompt(text);
+                                    setIsVoiceModalOpen(false);
+                                }}
+                            />
 
                             {progress.progress >= 0 && (
                                 <div className="mt-4 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
@@ -377,10 +399,8 @@ export default function Home() {
                         <RAGStatusPanel groups={ragGroups} />
                         <NotesPanel 
                             notes={notes} 
-                            onSave={async (updatedNote) => {
-                                // TODO: Implement note updating logic
-                                console.log('Note updated:', updatedNote);
-                            }} 
+                            onSave={saveNote}
+                            onDelete={deleteNote}
                         />
                     </div>
                 </div>

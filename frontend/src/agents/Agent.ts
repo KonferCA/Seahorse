@@ -112,20 +112,18 @@ export class Agent {
                 (text) =>
                     new Document({
                         pageContent: text,
-                        metadata: { source: 'browser-data' },
+                        metadata: { source: 'note', type: 'note' },
                     })
             );
-            const documents =
-                await this.textSplitter!.splitDocuments(rawDocuments);
+            const documents = await this.textSplitter!.splitDocuments(rawDocuments);
             if (this.vectorStore !== null) {
                 await this.vectorStore.addDocuments(documents);
             }
             this.isVectorStoreEmpty = false;
             return documents.length;
         } catch (error) {
-            throw new Error(
-                `Failed to embed texts: ${(error as Error).message}`
-            );
+            console.error('Failed to embed texts:', error);
+            throw error;
         }
     }
 
@@ -173,5 +171,17 @@ export class Agent {
 
     setStreamingCallback(callback: (token: string) => void) {
         this.onToken = callback;
+    }
+
+    async generateDirectResponse(prompt: string): Promise<string> {
+        try {
+            const response = await this.defaultChain.invoke({
+                question: prompt
+            });
+            return response;
+        } catch (error) {
+            console.error('Error generating direct response:', error);
+            throw error;
+        }
     }
 }
