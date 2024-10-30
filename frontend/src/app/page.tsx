@@ -1,18 +1,11 @@
 'use client';
 
-import {
-    CreateMLCEngine,
-    InitProgressReport,
-    MLCEngine,
-    prebuiltAppConfig,
-} from '@mlc-ai/web-llm';
-import { pipeline, env, FeatureExtractionPipeline } from '@xenova/transformers';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 // import GoogleAuth from './utils/GoogleAuth';
 import { formatGoogleData } from '@/utils/formatGoogleData';
 // import { useGoogleData } from './hooks/useGoogleData';
 import NearAuthGate from '@/components/NearAuthGate';
-import { essay } from '@/data/essay';
+// import { essay } from '@/data/essay';
 import RAGStatusPanel from '@/components/RAGStatusPanel';
 import GoogleDataPanel from '@/components/GoogleDataPanel';
 import Chat from '@/components/Chat';
@@ -21,13 +14,12 @@ import type { Message } from '@/components/Chat';
 import type { GroupProgress } from '@/components/RAGStatusPanel';
 import NotesPanel from '@/components/NotesPanel';
 import { useNotes } from '@/hooks/useNotes';
+import { Agent } from '@/agents/Agent';
 
 type ProgressState = {
     progress: number;
     text: string;
     timeElapsed: number;
-    stage: string;
-    isInitializing: boolean;
 };
 
 type RAGItem = {
@@ -55,16 +47,11 @@ interface SearchResult {
 export default function Home() {
     const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
     // const selectedModel = 'Phi-3.5-vision-instruct-q4f16_1-MLC';
-    const appConfig = prebuiltAppConfig;
-    appConfig.useIndexedDBCache = true;
-
     const [prompt, setPrompt] = useState('');
     const [progress, setProgress] = useState<ProgressState>({
         progress: 0,
         text: '',
         timeElapsed: 0,
-        stage: '',
-        isInitializing: false,
     });
     const [response, setResponse] = useState('');
     const [googleData, setGoogleData] = useState({
@@ -74,9 +61,6 @@ export default function Home() {
 
     const [ragGroups, setRagGroups] = useState<GroupProgress[]>([]);
 
-    const engineRef = useRef<MLCEngine>();
-    const embeddingModelRef = useRef<FeatureExtractionPipeline>();
-    const vectorStoreRef = useRef<VectorStore>(new VectorStore());
     const [ragItems, setRagItems] = useState<RAGItem[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
 
@@ -87,344 +71,139 @@ export default function Home() {
         setRagGroups 
     });
 
-    const initProgressCallback = (progressData: InitProgressReport) => {
-        setProgress((prev) => {
-            if (!progressData.progress && !progressData.text) {
-                return {
-                    ...prev,
-                    progress: 5,
-                    text: 'Initializing WebGPU environment...',
-                    timeElapsed: 0,
-                    stage: 'Setup',
-                    isInitializing: true,
-                };
-            }
+    const agentRef = useRef<Agent | null>(null);
 
-            let adjustedProgress = progressData.progress;
-            let stage = 'Preparing...';
+    const [currentStreamingMessage, setCurrentStreamingMessage] = useState('');
 
-            if (progressData.text.includes('download')) {
-                adjustedProgress = 10 + progressData.progress * 0.5;
-                stage = 'Downloading Model';
-            } else if (progressData.text.includes('initialize')) {
-                adjustedProgress = 60 + progressData.progress * 0.3;
-                stage = 'Initializing Model';
-            } else if (progressData.text.includes('shader')) {
-                adjustedProgress = 90 + progressData.progress * 0.1;
-                stage = 'Compiling Shaders';
-            }
+    const messageContentRef = useRef('');
 
-            return {
-                ...prev,
-                progress: Math.round(adjustedProgress),
-                text: progressData.text || prev.text,
-                timeElapsed: progressData.timeElapsed || prev.timeElapsed,
-                stage,
-                isInitializing: true,
-            };
-        });
-    };
-
-    useEffect(() => {
-        return () => {
-            setProgress({
-                progress: 0,
-                text: '',
-                timeElapsed: 0,
-                stage: '',
-                isInitializing: false,
-            });
-        };
+    const handleStream = useCallback((token: string) => {
+        setCurrentStreamingMessage(prev => prev + token);
     }, []);
 
-    const create = async () => {
-        setProgress((prev) => ({
-            ...prev,
-            progress: 2,
-            text: 'Preparing WebGPU environment...',
-            stage: 'Setup',
-            isInitializing: true,
-        }));
-
-        try {
-            setProgress((prev) => ({
-                ...prev,
-                progress: 10,
-                text: 'Initializing embedding pipeline...',
-                stage: 'Setup',
-                isInitializing: true,
-            }));
-
-            const embedModel = await pipeline(
-                'feature-extraction',
-                'Xenova/all-MiniLM-L6-v2'
-            );
-
-            setProgress((prev) => ({
-                ...prev,
-                progress: 30,
-                text: 'Embedding model loaded, preparing main model...',
-                stage: 'Setup',
-                isInitializing: true,
-            }));
-
-            const engine = await CreateMLCEngine(selectedModel, {
-                initProgressCallback: (progressData: any) => {
-                    setProgress((prev) => {
-                        let stage = 'Loading Model';
-                        let adjustedProgress = 30;
-
-                        if (progressData.text?.includes('download')) {
-                            adjustedProgress = 30 + progressData.progress * 0.4;
-                            stage = 'Downloading Model';
-                        } else if (progressData.text?.includes('initialize')) {
-                            adjustedProgress = 70 + progressData.progress * 0.2;
-                            stage = 'Initializing Model';
-                        } else if (progressData.text?.includes('shader')) {
-                            adjustedProgress = 90 + progressData.progress * 0.1;
-                            stage = 'Compiling Shaders';
-                        } else if (
-                            !progressData.text &&
-                            !progressData.progress
-                        ) {
-                            adjustedProgress = prev.progress + 1;
-                            stage = 'Processing';
-                        }
-
-                        return {
-                            ...prev,
-                            progress: Math.min(
-                                Math.round(adjustedProgress),
-                                99
-                            ),
-                            text: progressData.text || prev.text,
-                            timeElapsed:
-                                progressData.timeElapsed || prev.timeElapsed,
-                            stage,
-                            isInitializing: true,
-                        };
-                    });
-                },
-                appConfig,
-            });
-
-            embeddingModelRef.current = embedModel;
-            engineRef.current = engine;
-
-            setProgress((prev) => ({
-                ...prev,
-                progress: 100,
-                text: 'Ready',
-                stage: 'Complete',
-                isInitializing: false,
-            }));
-        } catch (error) {
-            console.error('Error initializing:', error);
-            setProgress((prev) => ({
-                ...prev,
-                text: 'Error initializing model. Please refresh.',
-                stage: 'Error',
-                isInitializing: false,
-            }));
-        }
-    };
-
     useEffect(() => {
+        const create = async () => {
+            setProgress((prev) => ({
+                ...prev,
+                progress: 0,
+                text: 'Preparing environment...',
+            }));
+
+            try {
+                if (agentRef.current === null) {
+                    const agent = new Agent(selectedModel);
+                    await agent.initialize((progress) =>
+                        setProgress({
+                            ...progress,
+                        })
+                    );
+                    agentRef.current = agent;
+                }
+            } catch (error) {
+                console.error('Error initializing:', error);
+                setProgress((prev) => ({
+                    ...prev,
+                    text: 'Error initializing model. Please refresh.',
+                }));
+            }
+        };
         create();
     }, []);
 
     useEffect(() => {
         const processGoogleData = async () => {
-            if (!embeddingModelRef.current || !googleData) return;
+            if (!agentRef.current || !googleData) return;
 
             if (
                 googleData.calendar.length > 0 ||
                 googleData.emails.length > 0
             ) {
-                setRagGroups((prev: any) => {
-                    const existingDocumentGroup = prev.find(
-                        (g: any) => g.type === 'document'
-                    );
-                    const newGroups = [
-                        {
-                            type: 'email',
-                            total: googleData.emails.length,
-                            completed: 0,
-                            error: 0,
-                            inProgress: 0,
-                        },
-                        {
-                            type: 'calendar',
-                            total: googleData.calendar.length,
-                            completed: 0,
-                            error: 0,
-                            inProgress: 0,
-                        },
-                    ];
-
-                    return existingDocumentGroup
-                        ? [...newGroups, existingDocumentGroup]
-                        : newGroups;
-                });
+                // setRagGroups((prev: any) => {
+                //     const existingDocumentGroup = prev.find(
+                //         (g: any) => g.type === 'document'
+                //     );
+                //     const newGroups = [
+                //         {
+                //             type: 'email',
+                //             total: googleData.emails.length,
+                //             completed: 0,
+                //             error: 0,
+                //             inProgress: 0,
+                //         },
+                //         {
+                //             type: 'calendar',
+                //             total: googleData.calendar.length,
+                //             completed: 0,
+                //             error: 0,
+                //             inProgress: 0,
+                //         },
+                //     ];
+                //
+                //     return existingDocumentGroup
+                //         ? [...newGroups, existingDocumentGroup]
+                //         : newGroups;
+                // });
 
                 const formattedItems = formatGoogleData(
                     googleData.calendar,
                     googleData.emails
                 );
 
-                for (const item of formattedItems) {
-                    setRagGroups((prev) =>
-                        prev.map((group) =>
-                            group.type === item.type
-                                ? { ...group, inProgress: group.inProgress + 1 }
-                                : group
-                        )
-                    );
+                console.log(formattedItems.map((item) => item.content));
 
-                    try {
-                        const docId = await vectorStoreRef.current.addDocument(
-                            item.content,
-                            {
-                                ...item.metadata,
-                                filename: `${item.type}_${item.metadata[`${item.type}Id`]}.txt`,
-                                type: 'text/plain',
-                            }
-                        );
+                console.log('embedding gmail and calendar');
+                await agentRef.current.embedTexts(
+                    formattedItems.map((item) => item.content)
+                );
+                console.log('embedded gmail and calendar');
 
-                        const embedding = await embeddingModelRef.current(
-                            item.content,
-                            {
-                                pooling: 'mean',
-                                normalize: true,
-                            }
-                        );
+                // for (const item of formattedItems) {
+                // setRagGroups((prev) =>
+                //     prev.map((group) =>
+                //         group.type === item.type
+                //             ? { ...group, inProgress: group.inProgress + 1 }
+                //             : group
+                //     )
+                // );
 
-                        await vectorStoreRef.current.addEmbedding(
-                            Array.from(embedding.data),
-                            docId
-                        );
-
-                        setRagGroups((prev) =>
-                            prev.map((group) =>
-                                group.type === item.type
-                                    ? {
-                                        ...group,
-                                        completed: group.completed + 1,
-                                        inProgress: group.inProgress - 1,
-                                    }
-                                    : group
-                            )
-                        );
-                    } catch (error) {
-                        setRagGroups((prev) =>
-                            prev.map((group) =>
-                                group.type === item.type
-                                    ? {
-                                        ...group,
-                                        error: group.error + 1,
-                                        inProgress: group.inProgress - 1,
-                                    }
-                                    : group
-                            )
-                        );
-                        console.error(
-                            `Error processing ${item.type} item:`,
-                            error
-                        );
-                    }
-                }
+                // try {
+                // setRagGroups((prev) =>
+                //     prev.map((group) =>
+                //         group.type === item.type
+                //             ? {
+                //                 ...group,
+                //                 completed: group.completed + 1,
+                //                 inProgress: group.inProgress - 1,
+                //             }
+                //             : group
+                //     )
+                // );
+                //     } catch (error) {
+                //         setRagGroups((prev) =>
+                //             prev.map((group) =>
+                //                 group.type === item.type
+                //                     ? {
+                //                         ...group,
+                //                         error: group.error + 1,
+                //                         inProgress: group.inProgress - 1,
+                //                     }
+                //                     : group
+                //             )
+                //         );
+                //         console.error(
+                //             `Error processing ${item.type} item:`,
+                //             error
+                //         );
+                //     }
+                // }
             }
         };
 
         processGoogleData();
     }, [googleData]);
 
-    // useEffect(() => {
-    // const loadDemoEssay = async () => {
-    // if (!embeddingModelRef.current) return;
-    //
-    // setRagGroups((prev: any) => {
-    //     const documentGroup = {
-    //         type: 'document',
-    //         total: 1,
-    //         completed: 0,
-    //         error: 0,
-    //         inProgress: 1,
-    //     };
-    //     return [...prev, documentGroup];
-    // });
-    //
-    // console.log('Loading essay content:', essay.slice(0, 100));
-    //
-    // const demoItem: RAGItem = {
-    //     id: 'demo_essay_1',
-    //     type: 'document',
-    //     title: 'Demo Essay',
-    //     status: 'pending',
-    //     timestamp: Date.now(),
-    // };
-    //
-    // setRagItems((prev) => [...prev, demoItem]);
-    //
-    // try {
-    //     setRagItems((prev) =>
-    //         prev.map((item) =>
-    //             item.id === 'demo_essay_1'
-    //                 ? { ...item, status: 'embedding' as const }
-    //                 : item
-    //         )
-    //     );
-    //
-    //     const docId = await vectorStoreRef.current.addDocument(essay, {
-    //         documentId: 'demo_essay_1',
-    //         title: 'Demo Essay',
-    //         filename: 'demo_essay.txt',
-    //         type: 'text/plain',
-    //     });
-    //
-    //     const embedding = await embeddingModelRef.current(essay, {
-    //         pooling: 'mean',
-    //         normalize: true,
-    //     });
-    //
-    //     await vectorStoreRef.current.addEmbedding(
-    //         Array.from(embedding.data),
-    //         docId
-    //     );
-    //
-    //     setRagItems((prev) =>
-    //         prev.map((item) =>
-    //             item.id === 'demo_essay_1'
-    //                 ? { ...item, status: 'completed' as const }
-    //                 : item
-    //         )
-    //     );
-    //
-    //     setRagGroups((prev) =>
-    //         prev.map((group) =>
-    //             group.type === 'document'
-    //                 ? { ...group, completed: 1, inProgress: 0 }
-    //                 : group
-    //         )
-    //     );
-    // } catch (error) {
-    //     setRagGroups((prev) =>
-    //         prev.map((group) =>
-    //             group.type === 'document'
-    //                 ? { ...group, error: 1, inProgress: 0 }
-    //                 : group
-    //         )
-    //     );
-    //     console.error('Error loading demo essay:', error);
-    // }
-    // };
-    // if (embeddingModelRef.current && progress.progress === 100) {
-    //     loadDemoEssay();
-    // }
-    // }, [embeddingModelRef.current, progress.progress]);
-
     const query = async () => {
-        if (!engineRef.current || !embeddingModelRef.current) return;
+        if (!prompt.trim() || !agentRef.current) return;
 
         setMessages((prev) => [
             ...prev,
@@ -481,9 +260,60 @@ export default function Home() {
         ]);
 
         setPrompt('');
+        try {
+            // reset message content ref
+            messageContentRef.current = '';
+            
+            setMessages(prev => [
+                ...prev,
+                { role: 'user', content: prompt, timestamp: new Date() }
+            ]);
+            
+            // add empty assistant message for streaming
+            setMessages(prev => [
+                ...prev,
+                { 
+                    role: 'assistant', 
+                    content: '', 
+                    timestamp: new Date(),
+                    isStreaming: true 
+                }
+            ]);
+            
+            setCurrentStreamingMessage('');
+            agentRef.current.setStreamingCallback((token: string) => {
+                messageContentRef.current += token;
+                
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages[newMessages.length - 1];
+                    if (lastMessage.role === 'assistant') {
+                        lastMessage.content = messageContentRef.current;
+                    }
+                    return newMessages;
+                });
+            });
+            
+            const response = await agentRef.current.generateResponse(prompt);
+            
+            // update final message and remove streaming state
+            setMessages(prev => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages[newMessages.length - 1];
+                if (lastMessage.role === 'assistant') {
+                    lastMessage.isStreaming = false;
+                }
+                return newMessages;
+            });
+            
+            setPrompt('');
+        } catch (error) {
+            console.error('Error:', error);
+        }
     };
 
     const handleGoogleData = (calendar: any, emails: any) => {
+        console.log(calendar, emails);
         setGoogleData({
             calendar,
             emails,
@@ -510,7 +340,7 @@ export default function Home() {
                                 onSendMessage={query}
                                 isLoading={
                                     progress.progress > 0 &&
-                                    progress.progress < 100
+                                    progress.progress < 1
                                 }
                             />
                         </div>
@@ -529,11 +359,11 @@ export default function Home() {
                                     disabled={
                                         !prompt.trim() ||
                                         (progress.progress > 0 &&
-                                            progress.progress < 100)
+                                            progress.progress < 1)
                                     }
                                     className={`px-4 py-2 bg-sky-400 text-white rounded-lg font-medium
                                         ${progress.progress > 0 &&
-                                            progress.progress < 100
+                                            progress.progress < 1
                                             ? 'opacity-50 cursor-not-allowed'
                                             : 'hover:bg-sky-500 active:bg-sky-600'
                                         }`}
@@ -542,22 +372,24 @@ export default function Home() {
                                 </button>
                             </div>
 
-                            {}
-                            {progress.progress > 0 && (
+                            {progress.progress >= 0 && (
                                 <div className="mt-4 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
                                     <div className="flex justify-between mb-2">
                                         <span className="text-sm font-medium text-gray-700">
-                                            {progress.stage || 'Loading...'}
+                                            {progress.text}
                                         </span>
                                         <span className="text-sm text-gray-500">
-                                            {progress.progress}%
+                                            {Math.floor(
+                                                progress.progress * 100
+                                            )}
+                                            %
                                         </span>
                                     </div>
                                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-sky-400 transition-all duration-300 ease-in-out"
                                             style={{
-                                                width: `${progress.progress}%`,
+                                                width: `${Math.floor(progress.progress * 100)}%`,
                                                 transition:
                                                     'width 0.5s ease-in-out',
                                             }}
@@ -574,7 +406,6 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {}
                     <div className="w-80 space-y-4">
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />

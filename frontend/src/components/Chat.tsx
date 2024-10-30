@@ -11,7 +11,8 @@ export type Message = {
         score: number;
         title?: string;
     };
-};
+    isStreaming?: boolean;
+}
 
 type ChatProps = {
     messages: Message[];
@@ -34,36 +35,43 @@ export function Chat({ messages, onSendMessage, isLoading }: ChatProps) {
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.role === 'user'
+                        ? 'justify-end'
+                        : message.role === 'context'
+                            ? 'justify-center'
+                            : 'justify-start'
+                        }`}
                 >
                     <div
-                        className={`max-w-[80%] rounded-lg p-4 ${
-                            message.role === 'user'
-                                ? 'bg-sky-500 text-white'
-                                : message.role === 'context'
-                                ? 'bg-gray-100 text-gray-700 text-sm'
-                                : 'bg-gray-200 text-gray-800'
-                        }`}
+                        className={`max-w-[80%] p-4 rounded-lg ${message.role === 'user'
+                            ? 'bg-blue-500 text-white'
+                            : message.role === 'context'
+                                ? 'bg-gray-200 text-gray-600 border border-gray-300'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
                     >
                         {message.role === 'context' && message.metadata && (
-                            <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
-                                <span>
-                                    {message.metadata.type === 'email' && '📧'}
-                                    {message.metadata.type === 'calendar' && '📅'}
-                                    {message.metadata.type === 'document' && '📄'}
-                                    {message.metadata.type === 'note' && '📝'}
+                            <div className="flex items-center gap-2 mb-2 text-sm border-b border-gray-300 pb-2">
+                                <span className="font-medium">
+                                    {message.metadata.type === 'email' ? '📧'
+                                        : message.metadata.type === 'calendar' ? '📅'
+                                            : '📄'}
+                                    {message.metadata.title}
                                 </span>
-                                <span>{message.metadata.title}</span>
-                                <span className="opacity-50">
-                                    {Math.round(message.metadata.score * 100)}% match
+                                <span className="text-gray-500">
+                                    (Relevance: {(message.metadata.score * 100).toFixed(1)}%)
                                 </span>
                             </div>
                         )}
-                        <p className="whitespace-pre-wrap">{message.content}</p>
-                        {message.source === 'voice' && (
-                            <span className="ml-2 text-xs opacity-50">🎤</span>
-                        )}
+                        <p className="text-sm whitespace-pre-wrap">
+                            {message.content}
+                            {message.isStreaming && (
+                                <span className="inline-block w-1.5 h-4 ml-0.5 bg-gray-400 animate-pulse" />
+                            )}
+                        </p>
+                        <span className="text-xs opacity-70 mt-2 block">
+                            {new Date(message.timestamp).toLocaleTimeString()}
+                        </span>
                     </div>
                 </motion.div>
             ))}
