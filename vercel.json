@@ -1,8 +1,8 @@
 {
     "version": 2,
     "framework": "nextjs",
-    "buildCommand": "cd frontend && npm install && npm run build",
-    "installCommand": "cd frontend && npm install",
+    "buildCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",
+    "installCommand": "cd frontend && npm install --legacy-peer-deps",
     "outputDirectory": ".next",
     "regions": ["sfo1"],
     "env": {
