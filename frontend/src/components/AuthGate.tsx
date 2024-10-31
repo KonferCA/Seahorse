@@ -3,7 +3,9 @@ import { useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { NearContext } from '@wallets';
 
-export default function AuthGate({ children }) {
+import { ReactNode } from 'react';
+
+export default function AuthGate({ children }: { children: ReactNode }) {
   const { signedAccountId } = useContext(NearContext);
   const router = useRouter();
 
