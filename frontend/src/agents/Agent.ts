@@ -82,7 +82,7 @@ export class Agent {
 
         this.wallet = new Wallet({
             networkId: NetworkId,
-            createAccessKeyFor: 'contract1.iseahorse.testnet',
+            createAccessKeyFor: 'contract1.iseahorse.testnet' as any,
         });
     }
 
