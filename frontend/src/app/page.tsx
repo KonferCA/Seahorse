@@ -18,6 +18,8 @@ import { Agent } from '@/agents/Agent';
 import VoiceModal from '@/components/VoiceModal';
 import ContextPanel, { ContextItem } from '@/components/ContextPanel';
 import AdminPanel from '@/components/AdminPanel';
+import PayoutPanel from '@/components/PayoutPanel';
+import { ProviderTracker } from '@/services/ProviderTracker';
 
 type ProgressState = {
     progress: number;
@@ -253,10 +255,9 @@ export default function Home() {
         
         const currentPrompt = prompt;
         setPrompt('');
-        messageContentRef.current = ''; // reset message content before starting new chat
+        messageContentRef.current = '';
         
         try {
-            // add user message
             setMessages(prev => [
                 ...prev,
                 { role: 'user', content: currentPrompt, timestamp: new Date() }
@@ -264,6 +265,26 @@ export default function Home() {
             
             // get similar documents
             const results = await agentRef.current.searchSimilar(currentPrompt, 4);
+            
+            // track provider usage - only track highest score per provider per query
+            const tracker = new ProviderTracker();
+            const providerScores = new Map<string, number>();
+
+            // first find highest score per provider
+            for (const [doc, score] of results) {
+                if (doc.metadata?.source === 'provider' && doc.metadata?.providerId) {
+                    const currentHighest = providerScores.get(doc.metadata.providerId) || 0;
+                    if (score > currentHighest) {
+                        providerScores.set(doc.metadata.providerId, score);
+                    }
+                }
+            }
+
+            // then log only the highest scores
+            for (const [providerId, score] of providerScores) {
+                const normalizedScore = Math.min(Math.max(score, 0), 1);
+                await tracker.logProviderUsage(providerId, normalizedScore);
+            }
             
             // add context messages if any found
             if (results.length > 0) {
@@ -503,6 +524,7 @@ export default function Home() {
                         <AdminPanel />
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />
+                        <PayoutPanel />
                         <NotesPanel 
                             notes={notes} 
                             onSave={saveNote}

@@ -133,32 +133,20 @@ export class Agent {
                 });
                 console.log('provider data received:', data);
 
-                data.forEach((item: { content: string }) => {
-                    console.log('processing item:', item);
+                data.forEach((item: { content: string, id: string }) => {
                     const doc = new Document({
                         pageContent: item.content,
                         metadata: {
                             source: 'provider',
                             providerId: provider.id,
                             providerName: provider.name,
-                            type: 'document'
+                            type: 'document',
+                            itemId: item.id,
+                            timestamp: new Date().toISOString()
                         }
                     });
-                    console.log('created document:', doc);
                     allData.push(doc);
                     processedItems++;
-                    
-                    if (progressCallback) {
-                        progressCallback({
-                            message: 'Loading provider data...',
-                            progress: 0.8,
-                            ragUpdate: {
-                                type: 'document',
-                                completed: processedItems,
-                                inProgress: totalItems - processedItems
-                            }
-                        });
-                    }
                 });
             }
 
