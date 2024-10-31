@@ -3,7 +3,6 @@ import { NearContext } from '@/wallets';
 import { ProviderTracker } from '@/services/ProviderTracker';
 import { PayoutStats, ProviderUsage } from '@/types/provider';
 
-// Create singleton tracker instance
 const tracker = new ProviderTracker();
 
 export default function PayoutPanel() {
@@ -25,9 +24,9 @@ export default function PayoutPanel() {
     };
 
     useEffect(() => {
-        loadStats(); // initial load
+        loadStats();
         const unsubscribe = tracker.subscribe(() => {
-            loadStats(); // reload when data changes
+            loadStats();
         });
         return () => unsubscribe();
     }, []);
@@ -44,7 +43,6 @@ export default function PayoutPanel() {
                 }))
             );
 
-            // Clear UI state immediately before transaction
             setStats(null);
             setUsages([]);
             await tracker.clearUsages();
@@ -61,7 +59,6 @@ export default function PayoutPanel() {
             
         } catch (error) {
             console.error('Error processing payout:', error);
-            // Reload stats if transaction fails
             loadStats();
         } finally {
             setIsLoading(false);
@@ -70,35 +67,35 @@ export default function PayoutPanel() {
 
     if (!stats) {
         return (
-            <div className="bg-white rounded-lg shadow-lg p-6">
-                <h2 className="text-lg font-semibold mb-4">💰 Provider Payouts</h2>
-                <div className="text-center text-gray-500">No payouts pending</div>
+            <div className="bg-[#0f2c24] rounded-lg p-6 border-2 border-[#22886c]/20">
+                <h2 className="text-lg font-semibold mb-4 text-white">💰 Provider Payouts</h2>
+                <div className="text-center text-white/50">No payouts pending</div>
             </div>
         );
     }
 
     return (
-        <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">💰 Provider Payouts</h2>
+        <div className="bg-[#0f2c24] rounded-lg p-6 border-2 border-[#22886c]/20">
+            <h2 className="text-lg font-semibold mb-4 text-white">💰 Provider Payouts</h2>
             
             <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-500">Providers</div>
-                    <div className="text-2xl font-semibold">{stats.totalProviders}</div>
+                <div className="p-4 bg-[#071b16] rounded-lg border border-[#22886c]/20">
+                    <div className="text-sm text-white/50">Providers</div>
+                    <div className="text-2xl font-semibold text-white">{stats.totalProviders}</div>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-500">Total Uses</div>
-                    <div className="text-2xl font-semibold">{stats.totalUsages}</div>
+                <div className="p-4 bg-[#071b16] rounded-lg border border-[#22886c]/20">
+                    <div className="text-sm text-white/50">Total Uses</div>
+                    <div className="text-2xl font-semibold text-white">{stats.totalUsages}</div>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-500">Avg Relevancy</div>
-                    <div className="text-2xl font-semibold">
+                <div className="p-4 bg-[#071b16] rounded-lg border border-[#22886c]/20">
+                    <div className="text-sm text-white/50">Avg Relevancy</div>
+                    <div className="text-2xl font-semibold text-white">
                         {(stats.averageRelevancy * 100).toFixed(1)}%
                     </div>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-500">Period</div>
-                    <div className="text-sm font-medium">
+                <div className="p-4 bg-[#071b16] rounded-lg border border-[#22886c]/20">
+                    <div className="text-sm text-white/50">Period</div>
+                    <div className="text-sm font-medium text-white">
                         {stats.periodStart.toLocaleDateString()} - {stats.periodEnd.toLocaleDateString()}
                     </div>
                 </div>
@@ -107,14 +104,14 @@ export default function PayoutPanel() {
             <button
                 onClick={handlePayout}
                 disabled={isLoading || !usages.length}
-                className={`w-full py-2 px-4 rounded-lg ${
+                className={`w-full py-2 px-4 rounded-lg border-2 transition-colors ${
                     isLoading || !usages.length
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-green-500 hover:bg-green-600 text-white'
+                        ? 'bg-[#071b16] text-white/50 border-[#22886c]/20 cursor-not-allowed'
+                        : 'bg-[#22886c] border-[#22886c] text-white'
                 }`}
             >
                 {isLoading ? 'Processing...' : 'Process Payouts'}
             </button>
         </div>
     );
-} 
+};
