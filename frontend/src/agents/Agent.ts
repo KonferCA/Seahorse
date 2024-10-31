@@ -194,8 +194,22 @@ export class Agent {
         }
     }
 
+    private async clearCache() {
+        return new Promise<void>((resolve, reject) => {
+            try {
+                const DBDeleteRequest = indexedDB.deleteDatabase('webllm-cache');
+                DBDeleteRequest.onerror = () => reject(new Error('Failed to clear cache'));
+                DBDeleteRequest.onsuccess = () => resolve();
+            } catch (error) {
+                resolve();
+            }
+        });
+    }
+
     async initialize(progressCallback: InitProgressCallback) {
         try {
+            await this.clearCache();
+
             // Start with model loading
             progressCallback(
                 createProgressReport({
@@ -209,7 +223,7 @@ export class Agent {
                 model: this.modelName,
                 appConfig: {
                     ...prebuiltAppConfig,
-                    useIndexedDBCache: true,
+                    useIndexedDBCache: false,
                 },
                 maxRetries: 10,
                 chatOptions: {
@@ -219,6 +233,7 @@ export class Agent {
                     presence_penalty: 0.6,
                     frequency_penalty: 0.6,
                 },
+                
             });
 
             // Wait for model to initialize
@@ -255,6 +270,7 @@ export class Agent {
                     progress: 0.7,
                 })
             );
+            
             this.voyClient = new VoyClient();
             this.vectorStore = new VoyVectorStore(
                 this.voyClient,
@@ -349,7 +365,7 @@ export class Agent {
             console.error('Error during initialization:', error);
             progressCallback(
                 createProgressReport({
-                    message: 'Error initializing system',
+                    message: 'Error initializing system' + (error as Error),
                     progress: 0,
                 })
             );
