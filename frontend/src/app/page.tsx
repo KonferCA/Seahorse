@@ -16,7 +16,10 @@ import NotesPanel from '@/components/NotesPanel';
 import { useNotes } from '@/hooks/useNotes';
 import { Agent } from '@/agents/Agent';
 import VoiceModal from '@/components/VoiceModal';
+import ContextPanel, { ContextItem } from '@/components/ContextPanel';
 import AdminPanel from '@/components/AdminPanel';
+import PayoutPanel from '@/components/PayoutPanel';
+import { ProviderTracker } from '@/services/ProviderTracker';
 
 type ProgressState = {
     progress: number;
@@ -44,8 +47,8 @@ interface SearchResult {
 }
 
 export default function Home() {
-    const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
-    // const selectedModel = 'Phi-3.5-vision-instruct-q4f16_1-MLC';
+    // const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
+    const selectedModel = 'Phi-3.5-vision-instruct-q4f16_1-MLC';
     const [prompt, setPrompt] = useState('');
     const [progress, setProgress] = useState<ProgressState>({
         progress: 0,
@@ -75,6 +78,8 @@ export default function Home() {
     const messageContentRef = useRef('');
 
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+
+    const [contextItems, setContextItems] = useState<ContextItem[]>([]);
 
     const handleStream = useCallback((token: string) => {
         setCurrentStreamingMessage(prev => prev + token);
@@ -241,25 +246,61 @@ export default function Home() {
         processGoogleData();
     }, [googleData]);
 
+    useEffect(() => {
+        console.log('Context items:', contextItems);
+    }, [contextItems]);
+
     const query = async () => {
         if (!prompt.trim() || !agentRef.current) return;
         
         const currentPrompt = prompt;
         setPrompt('');
-        messageContentRef.current = ''; // reset message content before starting new chat
+        messageContentRef.current = '';
         
         try {
-            // add user message
             setMessages(prev => [
                 ...prev,
-                { role: 'user', content: prompt, timestamp: new Date() }
+                { role: 'user', content: currentPrompt, timestamp: new Date() }
             ]);
             
             // get similar documents
-            const results = await agentRef.current.searchSimilar(prompt, 10);
+            const results = await agentRef.current.searchSimilar(currentPrompt, 4);
+            
+            // track provider usage - only track highest score per provider per query
+            const tracker = new ProviderTracker();
+            const providerScores = new Map<string, number>();
 
+            // first find highest score per provider
+            for (const [doc, score] of results) {
+                if (doc.metadata?.source === 'provider' && doc.metadata?.providerId) {
+                    const currentHighest = providerScores.get(doc.metadata.providerId) || 0;
+                    if (score > currentHighest) {
+                        providerScores.set(doc.metadata.providerId, score);
+                    }
+                }
+            }
+
+            // then log only the highest scores
+            for (const [providerId, score] of providerScores) {
+                const normalizedScore = Math.min(Math.max(score, 0), 1);
+                await tracker.logProviderUsage(providerId, normalizedScore);
+            }
+            
             // add context messages if any found
             if (results.length > 0) {
+                const newContextItems = results.map(([doc, score]) => ({
+                    id: Math.random().toString(36).substring(2, 9),
+                    type: (doc.metadata.type || 'document') as 'email' | 'calendar' | 'document',
+                    title: doc.metadata.title || 'Untitled',
+                    content: doc.pageContent,
+                    timestamp: new Date(),
+                    metadata: {
+                        score
+                    }
+                }));
+
+                setContextItems(newContextItems);
+
                 const contextMessages = results.map((docTuple) => {
                     const [doc, score] = docTuple;
                     return {
@@ -274,6 +315,8 @@ export default function Home() {
                     };
                 });
                 setMessages((prev) => [...prev, ...contextMessages]);
+            } else {
+                setContextItems([]);
             }
 
             // add empty assistant message for streaming
@@ -299,10 +342,10 @@ export default function Home() {
                     return newMessages;
                 });
             });
-
+            
             // generate response
-            await agentRef.current.generateResponse(prompt);
-
+            const response = await agentRef.current.generateResponse(currentPrompt);
+            
             // update final message and remove streaming state
             setMessages(prev => {
                 const newMessages = [...prev];
@@ -417,14 +460,14 @@ export default function Home() {
         <NearAuthGate>
             <main className="min-h-screen bg-gray-50 p-8">
                 <div className="max-w-6xl mx-auto flex gap-4">
-                    <div className="flex-1 bg-white rounded-lg shadow-lg">
+                    <div className="flex-1 bg-white rounded-lg shadow-lg flex flex-col">
                         <div className="p-4 border-b border-gray-200">
                             <h2 className="text-xl font-semibold text-gray-800">
                                 AI Assistant
                             </h2>
                         </div>
 
-                        <div className="h-[60vh] overflow-y-auto p-4">
+                        <div className="flex-1 flex flex-col">
                             <Chat
                                 messages={messages}
                                 onSendMessage={query}
@@ -481,11 +524,13 @@ export default function Home() {
                         <AdminPanel />
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />
+                        <PayoutPanel />
                         <NotesPanel 
                             notes={notes} 
                             onSave={saveNote}
                             onDelete={deleteNote}
                         />
+                        <ContextPanel items={contextItems} />
                     </div>
                 </div>
             </main>
