@@ -287,15 +287,15 @@ export default function AdminPanel() {
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-white rounded-xl p-6 w-[960px] h-[800px] flex flex-col shadow-xl"
+                            className="bg-[#0f2c24] rounded-xl p-6 w-[960px] h-[800px] flex flex-col shadow-xl border-2 border-[#22886c]/20"
                         >
                             <div className="flex justify-between items-center mb-6 flex-shrink-0">
-                                <h2 className="text-2xl font-semibold text-black-700">
+                                <h2 className="text-2xl font-semibold text-white/90">
                                     Provider Data Management
                                 </h2>
                                 <motion.button 
                                     onClick={() => setIsOpen(false)}
-                                    className="text-gray-500 hover:text-gray-700 p-1"
+                                    className="text-white/50 hover:text-white p-1"
                                     whileHover={{ scale: 1.1 }}
                                     whileTap={{ scale: 0.9 }}
                                 >
@@ -313,7 +313,7 @@ export default function AdminPanel() {
                                         className={`px-6 py-2 rounded-lg relative ${
                                             activeTab === tab 
                                                 ? 'text-white' 
-                                                : 'text-gray-700 hover:bg-gray-100'
+                                                : 'text-white/70 hover:bg-[#071b16]'
                                         }`}
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
@@ -321,7 +321,7 @@ export default function AdminPanel() {
                                         {activeTab === tab && (
                                             <motion.div
                                                 layoutId="activeTab"
-                                                className="absolute inset-0 bg-blue-500 rounded-lg"
+                                                className="absolute inset-0 bg-[#22886c] rounded-lg"
                                                 initial={false}
                                                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                                             />
@@ -345,29 +345,29 @@ export default function AdminPanel() {
                                                 className="space-y-4"
                                             >
                                                 <div className="mb-4">
-                                                    <label className="block mb-2 text-gray-700">Provider ID:</label>
+                                                    <label className="block mb-2 text-white/70">Provider ID:</label>
                                                     <input 
                                                         type="text"
                                                         value={newProvider.id}
                                                         onChange={(e) => setNewProvider(prev => ({ ...prev, id: e.target.value }))}
                                                         placeholder="Enter unique provider ID"
-                                                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                        className="w-full p-3 bg-[#071b16] border border-[#22886c]/20 rounded-lg focus:ring-2 focus:ring-[#22886c] focus:border-[#22886c] outline-none transition-all text-white"
                                                     />
                                                 </div>
 
                                                 <div className="mb-4">
-                                                    <label className="block mb-2 text-gray-700">Provider Name:</label>
+                                                    <label className="block mb-2 text-white/70">Provider Name:</label>
                                                     <input 
                                                         type="text"
                                                         value={newProvider.name}
                                                         onChange={(e) => setNewProvider(prev => ({ ...prev, name: e.target.value }))}
                                                         placeholder="Enter provider name"
-                                                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                        className="w-full p-3 bg-[#071b16] border border-[#22886c]/20 rounded-lg focus:ring-2 focus:ring-[#22886c] focus:border-[#22886c] outline-none transition-all text-white"
                                                     />
                                                 </div>
 
                                                 <div className="mb-4">
-                                                    <label className="block mb-2 text-gray-700">Value Score (1-100):</label>
+                                                    <label className="block mb-2 text-white/70">Value Score (1-100):</label>
                                                     <div className="flex items-center gap-4">
                                                         <input 
                                                             type="range"
@@ -375,20 +375,20 @@ export default function AdminPanel() {
                                                             max="100"
                                                             value={newProvider.valueScore}
                                                             onChange={(e) => setNewProvider(prev => ({ ...prev, valueScore: parseInt(e.target.value) }))}
-                                                            className="flex-1"
+                                                            className="flex-1 accent-[#22886c]"
                                                         />
-                                                        <span className="w-12 text-center font-mono">{newProvider.valueScore}</span>
+                                                        <span className="w-12 text-center font-mono text-white">{newProvider.valueScore}</span>
                                                     </div>
                                                 </div>
 
                                                 <div className="mb-4">
-                                                    <label className="block mb-2 text-gray-700">Wallet Address:</label>
+                                                    <label className="block mb-2 text-white/70">Wallet Address:</label>
                                                     <input 
                                                         type="text"
                                                         value={newProvider.walletAddress}
                                                         onChange={(e) => setNewProvider(prev => ({ ...prev, walletAddress: e.target.value }))}
                                                         placeholder="Enter NEAR wallet address"
-                                                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                        className="w-full p-3 bg-[#071b16] border border-[#22886c]/20 rounded-lg focus:ring-2 focus:ring-[#22886c] focus:border-[#22886c] outline-none transition-all text-white"
                                                     />
                                                 </div>
 
@@ -396,10 +396,7 @@ export default function AdminPanel() {
                                                     <motion.button
                                                         onClick={handleCreateProvider}
                                                         disabled={!newProvider.id || !newProvider.name || !newProvider.walletAddress}
-                                                        className={`px-4 py-2 bg-blue-500 text-white rounded-lg
-                                                            ${(!newProvider.id || !newProvider.name || !newProvider.walletAddress)
-                                                                ? 'opacity-50 cursor-not-allowed'
-                                                                : 'hover:bg-blue-600'}`}
+                                                        className={`px-4 py-2 bg-[#22886c] text-white rounded-lg hover:bg-[#1b6d56] disabled:opacity-50 disabled:cursor-not-allowed`}
                                                         whileHover={(!newProvider.id || !newProvider.name || !newProvider.walletAddress) ? {} : { scale: 1.02 }}
                                                         whileTap={(!newProvider.id || !newProvider.name || !newProvider.walletAddress) ? {} : { scale: 0.98 }}
                                                     >
@@ -416,7 +413,7 @@ export default function AdminPanel() {
                                                 className="space-y-4"
                                             >
                                                 <div className="mb-4">
-                                                    <label className="block mb-2 text-gray-700">Provider:</label>
+                                                    <label className="block mb-2 text-white/70">Provider:</label>
                                                     <div className="flex gap-2">
                                                         <select
                                                             value={selectedProvider}
@@ -426,18 +423,18 @@ export default function AdminPanel() {
                                                                     fetchProvider(e.target.value);
                                                                 }
                                                             }}
-                                                            className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                            className="flex-1 p-3 bg-[#071b16] border border-[#22886c]/20 rounded-lg focus:ring-2 focus:ring-[#22886c] focus:border-[#22886c] outline-none transition-all text-white"
                                                         >
-                                                            <option value="">Select a provider</option>
+                                                            <option value="" className="text-white">Select a provider</option>
                                                             {allProviders.map(provider => (
-                                                                <option key={provider.id} value={provider.id}>
+                                                                <option key={provider.id} value={provider.id} className="text-white">
                                                                     {provider.name} ({provider.id})
                                                                 </option>
                                                             ))}
                                                         </select>
                                                         <motion.button
                                                             onClick={fetchAllProviders}
-                                                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700"
+                                                            className="px-3 py-2 bg-[#071b16] hover:bg-[#0f2c24] text-white/70 hover:text-white rounded-lg border border-[#22886c]/20"
                                                             whileHover={{ scale: 1.05 }}
                                                             whileTap={{ scale: 0.95 }}
                                                         >
@@ -449,8 +446,8 @@ export default function AdminPanel() {
                                                 </div>
 
                                                 <div className="mb-4">
-                                                    <label className="block mb-2 text-gray-700">Upload CSV/TXT:</label>
-                                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
+                                                    <label className="block mb-2 text-white/70">Upload CSV/TXT:</label>
+                                                    <div className="border-2 border-dashed border-[#22886c]/20 rounded-lg p-8 text-center hover:border-[#22886c]/40 transition-colors">
                                                         <input 
                                                             type="file" 
                                                             accept=".csv,.txt"
@@ -459,14 +456,14 @@ export default function AdminPanel() {
                                                             id="file-upload"
                                                         />
                                                         <label htmlFor="file-upload" className="cursor-pointer">
-                                                            <div className="text-gray-500">
+                                                            <div className="text-white/70">
                                                                 <svg className="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                                                 </svg>
-                                                                <span className="text-blue-500 hover:text-blue-600">
+                                                                <span className="text-[#22886c] hover:text-[#1b6d56]">
                                                                     Click to upload
                                                                 </span>
-                                                                {" or drag and drop"}
+                                                                <span className="text-white/70"> or drag and drop</span>
                                                             </div>
                                                         </label>
                                                     </div>
@@ -478,22 +475,22 @@ export default function AdminPanel() {
                                                         animate={{ opacity: 1, height: 'auto' }}
                                                         className="mt-6"
                                                     >
-                                                        <div className="bg-gray-50 rounded-lg p-4 border">
+                                                        <div className="bg-[#071b16] rounded-lg p-4 border border-[#22886c]/20">
                                                             <div className="flex justify-between items-center mb-2">
-                                                                <h3 className="font-medium text-gray-700">Preview:</h3>
-                                                                <span className="text-sm text-gray-500">
+                                                                <h3 className="font-medium text-white">Preview:</h3>
+                                                                <span className="text-sm text-white/50">
                                                                     {csvContent.split('\n').length - 1} items
                                                                 </span>
                                                             </div>
                                                             <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                                                                <table className="min-w-full divide-y divide-gray-200">
-                                                                    <tbody className="divide-y divide-gray-200">
+                                                                <table className="min-w-full divide-y divide-[#22886c]/20">
+                                                                    <tbody className="divide-y divide-[#22886c]/20">
                                                                         {csvContent.split('\n').map((line, index) => (
-                                                                            <tr key={index} className={index === 0 ? 'bg-gray-100' : ''}>
+                                                                            <tr key={index} className={index === 0 ? 'bg-[#0f2c24]' : ''}>
                                                                                 <td className={`py-2 text-sm ${
                                                                                     index === 0 
-                                                                                        ? 'font-semibold text-gray-700' 
-                                                                                        : 'text-gray-600 font-mono'
+                                                                                        ? 'font-semibold text-white' 
+                                                                                        : 'text-white/70 font-mono'
                                                                                 }`}>
                                                                                     {line}
                                                                                 </td>
@@ -514,7 +511,7 @@ export default function AdminPanel() {
                                                 exit={{ opacity: 0, y: -20 }}
                                             >
                                                 <div className="mb-4">
-                                                    <label className="block mb-2">Provider:</label>
+                                                    <label className="block mb-2 text-white/70">Provider:</label>
                                                     <div className="flex gap-2">
                                                         <select
                                                             value={selectedProvider}
@@ -524,18 +521,18 @@ export default function AdminPanel() {
                                                                     fetchProvider(e.target.value);
                                                                 }
                                                             }}
-                                                            className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                            className="flex-1 p-3 bg-[#071b16] border border-[#22886c]/20 rounded-lg focus:ring-2 focus:ring-[#22886c] focus:border-[#22886c] outline-none transition-all text-white"
                                                         >
-                                                            <option value="">Select a provider</option>
+                                                            <option value="" className="text-white">Select a provider</option>
                                                             {allProviders.map(provider => (
-                                                                <option key={provider.id} value={provider.id}>
+                                                                <option key={provider.id} value={provider.id} className="text-white">
                                                                     {provider.name} ({provider.id})
                                                                 </option>
                                                             ))}
                                                         </select>
                                                         <motion.button
                                                             onClick={fetchAllProviders}
-                                                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700"
+                                                            className="px-3 py-2 bg-[#071b16] hover:bg-[#0f2c24] text-white/70 hover:text-white rounded-lg border border-[#22886c]/20"
                                                             whileHover={{ scale: 1.05 }}
                                                             whileTap={{ scale: 0.95 }}
                                                         >
@@ -547,18 +544,18 @@ export default function AdminPanel() {
                                                 </div>
 
                                                 {isLoading ? (
-                                                    <div className="text-center py-4">Loading...</div>
+                                                    <div className="text-center py-4 text-white/70">Loading...</div>
                                                 ) : (
                                                     <>
                                                         {providers.map(provider => (
-                                                            <div key={provider.id} className="mb-4 p-3 border rounded">
+                                                            <div key={provider.id} className="mb-4 p-3 border border-[#22886c]/20 bg-[#071b16] rounded-lg">
                                                                 <div className="flex justify-between items-start">
                                                                     <div>
-                                                                        <h3 className="font-medium">{provider.name}</h3>
-                                                                        <p className="text-sm text-gray-600">
+                                                                        <h3 className="font-medium text-white">{provider.name}</h3>
+                                                                        <p className="text-sm text-white/70">
                                                                             Value Score: {provider.valueScore}
                                                                         </p>
-                                                                        <p className="text-sm text-gray-600">
+                                                                        <p className="text-sm text-white/70">
                                                                             Wallet: {provider.walletAddress}
                                                                         </p>
                                                                     </div>
@@ -566,7 +563,7 @@ export default function AdminPanel() {
                                                                         whileHover={{ scale: 1.05 }}
                                                                         whileTap={{ scale: 0.95 }}
                                                                         onClick={() => handleDeleteProvider(provider.id)}
-                                                                        className="text-red-600 hover:text-red-900 text-sm px-3 py-1 rounded-lg hover:bg-red-50"
+                                                                        className="text-red-400 hover:text-red-300 text-sm px-3 py-1 rounded-lg hover:bg-red-900/20"
                                                                     >
                                                                         Delete Provider
                                                                     </motion.button>
@@ -580,41 +577,41 @@ export default function AdminPanel() {
                                                                 animate={{ opacity: 1, height: 'auto' }}
                                                                 className="mt-4"
                                                             >
-                                                                <div className="bg-gray-50 rounded-lg p-4 border">
+                                                                <div className="bg-[#071b16] rounded-lg p-4 border border-[#22886c]/20">
                                                                     <div className="flex justify-between items-center mb-2">
-                                                                        <h3 className="font-medium text-gray-700">Provider Data:</h3>
-                                                                        <span className="text-sm text-gray-500">
+                                                                        <h3 className="font-medium text-white/90">Provider Data:</h3>
+                                                                        <span className="text-sm text-white/50">
                                                                             {providerData.length} items
                                                                         </span>
                                                                     </div>
                                                                     <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                                                                        <table className="min-w-full divide-y divide-gray-200">
-                                                                            <thead className="bg-gray-50 sticky top-0">
+                                                                        <table className="min-w-full divide-y divide-[#22886c]/20">
+                                                                            <thead className="bg-[#071b16] sticky top-0">
                                                                                 <tr>
-                                                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">
                                                                                         ID
                                                                                     </th>
-                                                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">
                                                                                         Content
                                                                                     </th>
-                                                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">
                                                                                         Actions
                                                                                     </th>
                                                                                 </tr>
                                                                             </thead>
-                                                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                                            <tbody className="divide-y divide-[#22886c]/20">
                                                                                 {providerData.map((item, index) => (
                                                                                     <motion.tr 
                                                                                         key={item.id}
                                                                                         initial={{ opacity: 0, y: 20 }}
                                                                                         animate={{ opacity: 1, y: 0 }}
                                                                                         transition={{ delay: index * 0.05 }}
-                                                                                        className="hover:bg-gray-50"
+                                                                                        className="hover:bg-[#0f2c24]"
                                                                                     >
-                                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
+                                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-white/90">
                                                                                             {item.id}
                                                                                         </td>
-                                                                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                                                                        <td className="px-6 py-4 text-sm text-white/90">
                                                                                             <div 
                                                                                                 className="cursor-pointer"
                                                                                                 onClick={() => {
@@ -633,7 +630,7 @@ export default function AdminPanel() {
                                                                                                     ? item.content
                                                                                                     : truncateText(item.content, 80)}
                                                                                                 {item.content.length > 80 && (
-                                                                                                    <span className="text-blue-500 ml-2">
+                                                                                                    <span className="text-[#22886c] hover:text-[#1b6d56] ml-2">
                                                                                                         {expandedRows.has(item.id) ? 'Show less' : 'Show more'}
                                                                                                     </span>
                                                                                                 )}
@@ -644,7 +641,7 @@ export default function AdminPanel() {
                                                                                                 whileHover={{ scale: 1.05 }}
                                                                                                 whileTap={{ scale: 0.95 }}
                                                                                                 onClick={() => handleDelete(item.id)}
-                                                                                                className="text-red-600 hover:text-red-900"
+                                                                                                className="text-red-400 hover:text-red-300"
                                                                                             >
                                                                                                 Delete
                                                                                             </motion.button>
@@ -668,7 +665,7 @@ export default function AdminPanel() {
                             <div className="mt-6 flex justify-end gap-3 flex-shrink-0">
                                 <motion.button 
                                     onClick={() => setIsOpen(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                                    className="px-4 py-2 text-white/70 hover:bg-[#071b16] rounded-lg"
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
@@ -677,10 +674,7 @@ export default function AdminPanel() {
                                 <motion.button 
                                     onClick={handleUpload}
                                     disabled={!selectedProvider || !csvContent}
-                                    className={`px-4 py-2 bg-blue-500 text-white rounded-lg
-                                        ${(!selectedProvider || !csvContent) 
-                                            ? 'opacity-50 cursor-not-allowed' 
-                                            : 'hover:bg-blue-600'}`}
+                                    className={`px-4 py-2 bg-[#22886c] text-white rounded-lg hover:bg-[#1b6d56] disabled:opacity-50 disabled:cursor-not-allowed`}
                                     whileHover={(!selectedProvider || !csvContent) ? {} : { scale: 1.02 }}
                                     whileTap={(!selectedProvider || !csvContent) ? {} : { scale: 0.98 }}
                                 >
