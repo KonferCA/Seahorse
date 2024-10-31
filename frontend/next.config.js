@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    webpack: (config, { isServer }) => {
+    webpack: (config, { isServer, dev }) => {
         config.experiments = {
             ...config.experiments,
             asyncWebAssembly: true,
@@ -8,9 +8,7 @@ const nextConfig = {
         
         config.output = {
             ...config.output,
-            webassemblyModuleFilename: isServer
-                ? './../static/wasm/[modulehash].wasm'
-                : 'static/wasm/[modulehash].wasm',
+            webassemblyModuleFilename: 'static/wasm/[modulehash].wasm',
         };
 
         // Add WASM file handling
@@ -21,6 +19,8 @@ const nextConfig = {
 
         return config;
     },
+
+    output: 'standalone',
 };
 
 module.exports = nextConfig;
