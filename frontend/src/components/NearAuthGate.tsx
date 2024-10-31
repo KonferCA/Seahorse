@@ -167,10 +167,21 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-400 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">IT'S LOADING RELAX...</p>
+            <div className="flex items-center justify-center min-h-screen bg-[#071b16]">
+                <div className="text-center space-y-8">
+                    <div className="space-y-3">
+                        <h2 className="text-2xl font-bold text-white">
+                            Loading...
+                        </h2>
+                        <div className="flex items-center justify-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-[#22886c] animate-[bounce_1s_infinite_100ms]" />
+                            <div className="w-2 h-2 rounded-full bg-[#22886c] animate-[bounce_1s_infinite_200ms]" />
+                            <div className="w-2 h-2 rounded-full bg-[#22886c] animate-[bounce_1s_infinite_300ms]" />
+                        </div>
+                    </div>
+    
+                    <div className="absolute inset-0 z-0">
+                        <div className="absolute bottom-0 left-0 right-0 top-0 bg-[linear-gradient(to_right,#22886c1a_1px,transparent_1px),linear-gradient(to_bottom,#22886c1a_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />                    </div>
                 </div>
             </div>
         );
