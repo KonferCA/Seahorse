@@ -20,6 +20,7 @@ import ContextPanel, { ContextItem } from '@/components/ContextPanel';
 import AdminPanel from '@/components/AdminPanel';
 import PayoutPanel from '@/components/PayoutPanel';
 import { ProviderTracker } from '@/services/ProviderTracker';
+import type { Note } from '@/components/NotesPanel';
 
 type ProgressState = {
     progress: number;
@@ -37,11 +38,13 @@ type RAGItem = {
 
 // add interface for search results
 interface SearchResult {
-    chunk: string;
-    score: number;
+    pageContent: string;
     metadata: {
+        score: number;
         type: string;
         title?: string;
+        source?: string;
+        providerId?: string;
         [key: string]: any;
     };
 }
@@ -68,7 +71,7 @@ export default function Home() {
 
     const agentRef = useRef<Agent | null>(null);
 
-    const { notes, saveNote, deleteNote } = useNotes({ 
+    const { notes, saveNote: saveNoteContent, deleteNote } = useNotes({ 
         agent: agentRef.current,
         setRagGroups 
     });
@@ -271,7 +274,11 @@ export default function Home() {
             const providerScores = new Map<string, number>();
 
             // first find highest score per provider
-            for (const [doc, score] of results) {
+            for (const result of results) {
+                // handle result as [document, score] tuple
+                const [doc, similarity] = result;
+                const score = similarity || doc.metadata?.score || 0;
+                
                 if (doc.metadata?.source === 'provider' && doc.metadata?.providerId) {
                     const currentHighest = providerScores.get(doc.metadata.providerId) || 0;
                     if (score > currentHighest) {
@@ -288,32 +295,29 @@ export default function Home() {
             
             // add context messages if any found
             if (results.length > 0) {
-                const newContextItems = results.map(([doc, score]) => ({
+                const newContextItems = results.map(([doc]) => ({
                     id: Math.random().toString(36).substring(2, 9),
-                    type: (doc.metadata.type || 'document') as 'email' | 'calendar' | 'document',
-                    title: doc.metadata.title || 'Untitled',
+                    type: (doc.metadata?.type || 'document') as 'email' | 'calendar' | 'document',
+                    title: doc.metadata?.title || 'Untitled',
                     content: doc.pageContent,
                     timestamp: new Date(),
                     metadata: {
-                        score
+                        score: doc.metadata?.score || 0
                     }
                 }));
 
                 setContextItems(newContextItems);
 
-                const contextMessages = results.map((docTuple) => {
-                    const [doc, score] = docTuple;
-                    return {
-                        role: 'context' as const,
-                        content: doc.pageContent,
-                        timestamp: new Date(),
-                        metadata: {
-                            type: doc.metadata.type || 'document',
-                            title: doc.metadata.title || 'Untitled',
-                            score,
-                        },
-                    };
-                });
+                const contextMessages = results.map(([doc]) => ({
+                    role: 'context' as const,
+                    content: doc.pageContent,
+                    timestamp: new Date(),
+                    metadata: {
+                        type: doc.metadata?.type || 'document',
+                        title: doc.metadata?.title || 'Untitled',
+                        score: doc.metadata?.score || 0,
+                    },
+                }));
                 setMessages((prev) => [...prev, ...contextMessages]);
             } else {
                 setContextItems([]);
@@ -456,6 +460,11 @@ export default function Home() {
         };
     }, [progress.progress]);
 
+    // Create a wrapper function that matches the NotesPanel props type
+    const handleSaveNote = (note: Note) => {
+        return saveNoteContent(note.content);
+    };
+
     return (
         <NearAuthGate>
             <main className="min-h-screen relative">
@@ -531,7 +540,7 @@ export default function Home() {
                         <PayoutPanel />
                         <NotesPanel 
                             notes={notes} 
-                            onSave={saveNote}
+                            onSave={handleSaveNote}
                             onDelete={deleteNote}
                         />
                         <ContextPanel items={contextItems} />
