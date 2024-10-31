@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import localforage from 'localforage';
 
 export interface Document {

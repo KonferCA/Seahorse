@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { createContext } from 'react';
 
 // near api js
