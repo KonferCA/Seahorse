@@ -458,16 +458,16 @@ export default function Home() {
 
     return (
         <NearAuthGate>
-            <main className="min-h-screen bg-gray-50 p-8">
-                <div className="max-w-6xl mx-auto flex gap-4">
-                    <div className="flex-1 bg-white rounded-lg shadow-lg flex flex-col">
+            <main className="min-h-screen bg-gray-50">
+                <div className="max-w-6xl mx-auto flex gap-4 p-4 h-[calc(100vh-2rem)]"> {/* Adjusted height and padding */}
+                    <div className="flex-1 bg-white rounded-lg shadow-lg flex flex-col"> {/* Removed fixed height */}
                         <div className="p-4 border-b border-gray-200">
                             <h2 className="text-xl font-semibold text-gray-800">
                                 AI Assistant
                             </h2>
                         </div>
 
-                        <div className="flex-1 flex flex-col">
+                        <div className="flex-1 flex flex-col overflow-hidden"> {/* This will take remaining height */}
                             <Chat
                                 messages={messages}
                                 onSendMessage={query}
@@ -520,7 +520,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div className="w-80 space-y-4">
+                    <div className="w-80 space-y-4 overflow-y-auto max-h-[calc(100vh-2rem)]"> {/* Added max-height and overflow */}
                         <AdminPanel />
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />
