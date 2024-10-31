@@ -12,7 +12,7 @@ import {
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 } from '@langchain/core/prompts';
-import { InitProgressCallback, prebuiltAppConfig } from '@mlc-ai/web-llm';
+import { prebuiltAppConfig } from '@mlc-ai/web-llm';
 import { Wallet } from '@/wallets';
 import { NetworkId } from '@/config';
 
@@ -76,13 +76,15 @@ export class Agent {
             this.embeddingModelName = embeddingModelName;
         }
 
-        this.wallet = new Wallet({ 
-            networkId: NetworkId, 
-            createAccessKeyFor: 'contract1.iseahorse.testnet' 
+        this.wallet = new Wallet({
+            networkId: NetworkId,
+            createAccessKeyFor: 'contract1.iseahorse.testnet',
         });
     }
 
-    private async fetchAllProviderData(progressCallback?: InitProgressCallback): Promise<string[]> {
+    private async fetchAllProviderData(
+        progressCallback?: InitProgressCallback
+    ): Promise<string[]> {
         if (!this.wallet) return [];
 
         try {
@@ -90,7 +92,7 @@ export class Agent {
             const providers = await this.wallet.viewMethod({
                 contractId: 'contract1.iseahorse.testnet',
                 method: 'get_all_providers',
-                args: {}
+                args: {},
             });
             console.log('providers received:', providers);
 
@@ -100,7 +102,7 @@ export class Agent {
                 const data = await this.wallet.viewMethod({
                     contractId: 'contract1.iseahorse.testnet',
                     method: 'get_provider_data',
-                    args: { providerId: provider.id }
+                    args: { providerId: provider.id },
                 });
                 console.log('provider data received:', data);
                 totalItems += data.length;
@@ -116,8 +118,8 @@ export class Agent {
                         total: totalItems,
                         completed: 0,
                         error: 0,
-                        inProgress: totalItems
-                    }
+                        inProgress: totalItems,
+                    },
                 });
             }
 
@@ -129,11 +131,11 @@ export class Agent {
                 const data = await this.wallet.viewMethod({
                     contractId: 'contract1.iseahorse.testnet',
                     method: 'get_provider_data',
-                    args: { providerId: provider.id }
+                    args: { providerId: provider.id },
                 });
                 console.log('provider data received:', data);
 
-                data.forEach((item: { content: string, id: string }) => {
+                data.forEach((item: { content: string; id: string }) => {
                     const doc = new Document({
                         pageContent: item.content,
                         metadata: {
@@ -142,8 +144,8 @@ export class Agent {
                             providerName: provider.name,
                             type: 'document',
                             itemId: item.id,
-                            timestamp: new Date().toISOString()
-                        }
+                            timestamp: new Date().toISOString(),
+                        },
                     });
                     allData.push(doc);
                     processedItems++;
@@ -160,8 +162,8 @@ export class Agent {
                     progress: 0.8,
                     ragUpdate: {
                         type: 'document',
-                        error: 1
-                    }
+                        error: 1,
+                    },
                 });
             }
             return [];
@@ -172,7 +174,7 @@ export class Agent {
         try {
             // Start with model loading
             progressCallback({ message: 'Loading AI model...', progress: 0.1 });
-            
+
             // Initialize LLM first
             this.llm = new ChatWebLLM({
                 model: this.modelName,
@@ -191,7 +193,10 @@ export class Agent {
             progressCallback({ message: 'AI model loaded', progress: 0.5 });
 
             // Initialize embeddings and vector store
-            progressCallback({ message: 'Initializing embeddings...', progress: 0.6 });
+            progressCallback({
+                message: 'Initializing embeddings...',
+                progress: 0.6,
+            });
             this.embeddings = new HuggingFaceTransformersEmbeddings({
                 modelName: this.embeddingModelName,
             });
@@ -201,15 +206,25 @@ export class Agent {
                 chunkOverlap: 50,
             });
 
-            progressCallback({ message: 'Setting up vector store...', progress: 0.7 });
+            progressCallback({
+                message: 'Setting up vector store...',
+                progress: 0.7,
+            });
             this.voyClient = new VoyClient();
-            this.vectorStore = new VoyVectorStore(this.voyClient, this.embeddings);
+            this.vectorStore = new VoyVectorStore(
+                this.voyClient,
+                this.embeddings
+            );
 
             // Load provider data
-            progressCallback({ message: 'Loading provider data...', progress: 0.8 });
-            const providerData = await this.fetchAllProviderData(progressCallback);
+            progressCallback({
+                message: 'Loading provider data...',
+                progress: 0.8,
+            });
+            const providerData =
+                await this.fetchAllProviderData(progressCallback);
             console.log('provider data before vector store:', providerData);
-            
+
             if (providerData.length > 0) {
                 try {
                     console.log('attempting to add documents to vector store');
@@ -217,17 +232,22 @@ export class Agent {
                     console.log('documents successfully added to vector store');
                     this.isVectorStoreEmpty = false;
                 } catch (error) {
-                    console.error('Error adding documents to vector store:', error);
+                    console.error(
+                        'Error adding documents to vector store:',
+                        error
+                    );
                     throw error;
                 }
             }
 
             // Initialize chains
             progressCallback({ message: 'Finalizing setup...', progress: 0.9 });
-            
+
             // Create RAG prompt template
             const prompt = ChatPromptTemplate.fromMessages([
-                SystemMessagePromptTemplate.fromTemplate(SYSTEM_PROMPT_TEMPLATE),
+                SystemMessagePromptTemplate.fromTemplate(
+                    SYSTEM_PROMPT_TEMPLATE
+                ),
                 HumanMessagePromptTemplate.fromTemplate('{question}'),
             ]);
 
@@ -236,7 +256,10 @@ export class Agent {
                 {
                     context: async (input: { question: string }) => {
                         if (this.isVectorStoreEmpty) return '';
-                        const docs = await this.searchSimilar(input.question, 10);
+                        const docs = await this.searchSimilar(
+                            input.question,
+                            10
+                        );
                         return formatDocumentsAsString(docs);
                     },
                     question: (input: { question: string }) => input.question,
@@ -249,7 +272,9 @@ export class Agent {
 
             // Create default chain for when no context is available
             const defaultPrompt = ChatPromptTemplate.fromMessages([
-                SystemMessagePromptTemplate.fromTemplate(DEFAULT_SYSTEM_PROMPT_TEMPLATE),
+                SystemMessagePromptTemplate.fromTemplate(
+                    DEFAULT_SYSTEM_PROMPT_TEMPLATE
+                ),
                 HumanMessagePromptTemplate.fromTemplate('{question}'),
             ]);
 
@@ -266,9 +291,9 @@ export class Agent {
             progressCallback({ message: 'Ready!', progress: 1.0 });
         } catch (error) {
             console.error('Error during initialization:', error);
-            progressCallback({ 
-                message: 'Error initializing system', 
-                progress: 0 
+            progressCallback({
+                message: 'Error initializing system',
+                progress: 0,
             });
             throw error;
         }
@@ -299,12 +324,12 @@ export class Agent {
     async searchSimilar(query: string, k: number) {
         console.log('searching with query:', query);
         console.log('vectorStore empty?', this.isVectorStoreEmpty);
-        
+
         if (this.isVectorStoreEmpty) {
             console.log('vector store is empty, returning no results');
             return [];
         }
-        
+
         try {
             const queryVector = await this.embeddings!.embedQuery(query);
             const results = this.vectorStore!.client.search(
