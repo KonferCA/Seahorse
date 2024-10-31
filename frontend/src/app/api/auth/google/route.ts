@@ -18,7 +18,9 @@ export async function POST(request: Request) {
         });
 
         const payload = ticket.getPayload();
-        const userId = payload['sub'];
+        if (payload) {
+            const userId = payload['sub'];
+        }
 
         return NextResponse.json({ access_token: credential });
     } catch (error) {
