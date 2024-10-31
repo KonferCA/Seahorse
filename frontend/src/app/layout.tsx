@@ -8,10 +8,11 @@ import "./globals.css";
 import { NearContext, Wallet } from '@wallets';
 import { NetworkId } from '../config';
 import { useTransactionToast } from '@/hooks/useTransactionToast';
+import { ReactNode } from 'react';
 
 const wallet = new Wallet({ networkId: NetworkId });
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   const [signedAccountId, setSignedAccountId] = useState('');
   useTransactionToast();
 
@@ -27,7 +28,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
-          <NearContext.Provider value={{ wallet, signedAccountId }}>
+          <NearContext.Provider value={{ wallet : wallet as any, signedAccountId }}>
             {children}
             <Toaster 
               position="bottom-right"
