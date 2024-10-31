@@ -432,6 +432,11 @@ export class Agent {
     }
 
     async generateResponse(question: string): Promise<string> {
+        if (!this.ragChain) {
+            console.warn('RAG Chain not initialized.');
+            return '';
+        }
+
         const streamingCallback = {
             handleLLMNewToken: (token: string) => {
                 this.onToken?.(token);
@@ -455,6 +460,10 @@ export class Agent {
     }
 
     async generateDirectResponse(prompt: string): Promise<string> {
+        if (!this.defaultChain) {
+            console.warn('Default chain not initialized.');
+            return '';
+        }
         try {
             const response = await this.defaultChain!.invoke({
                 question: prompt,
