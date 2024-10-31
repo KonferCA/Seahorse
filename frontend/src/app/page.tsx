@@ -458,16 +458,20 @@ export default function Home() {
 
     return (
         <NearAuthGate>
-            <main className="min-h-screen bg-gray-50">
-                <div className="max-w-6xl mx-auto flex gap-4 p-4 h-[calc(100vh-2rem)]"> {/* Adjusted height and padding */}
-                    <div className="flex-1 bg-white rounded-lg shadow-lg flex flex-col"> {/* Removed fixed height */}
-                        <div className="p-4 border-b border-gray-200">
-                            <h2 className="text-xl font-semibold text-gray-800">
-                                AI Assistant
+            <main className="min-h-screen relative">
+                <div className="fixed inset-0 bg-[#071b16]">
+                    <div className="absolute bottom-0 left-0 right-0 top-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]"></div>
+                </div>
+
+                <div className="relative max-w-6xl mx-auto flex gap-4 p-4 h-[calc(100vh-2rem)]">
+                    <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-lg shadow-lg flex flex-col border border-white/10">
+                        <div className="p-4 border-b border-white/10">
+                            <h2 className="text-xl font-semibold text-white/90">
+                                welcome to seahorse.
                             </h2>
                         </div>
 
-                        <div className="flex-1 flex flex-col overflow-hidden"> {/* This will take remaining height */}
+                        <div className="flex-1 flex flex-col overflow-hidden">
                             <Chat
                                 messages={messages}
                                 onSendMessage={query}
@@ -476,42 +480,42 @@ export default function Home() {
                         </div>
 
                         {progress.progress > 0 && progress.progress < 100 && (
-                            <div className="px-4 py-2 border-t border-gray-100">
-                                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                            <div className="px-4 py-2 border-t border-white/10">
+                                <div className="flex items-center justify-between text-xs text-white/70 mb-1">
                                     <span>{progress.text}</span>
                                     <span>{progress.timeElapsed?.toFixed(1) || '0.0'}s</span>
                                 </div>
-                                <div className="w-full bg-gray-100 rounded-full h-1">
+                                <div className="w-full bg-white/5 rounded-full h-1">
                                     <div 
-                                        className="bg-blue-500 h-1 rounded-full transition-all duration-300" 
+                                        className="bg-sky-400 h-1 rounded-full transition-all duration-300" 
                                         style={{ width: `${progress.progress}%` }}
                                     />
                                 </div>
                             </div>
                         )}
 
-                        <div className="p-4 border-t border-gray-200">
+                        <div className="p-4 border-t border-white/10">
                             <div className="flex gap-2">
                                 <input
                                     value={prompt}
                                     onChange={(e) => setPrompt(e.target.value)}
                                     onKeyDown={handleKeyPress}
                                     placeholder="Ask me anything..."
-                                    className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400"
+                                    className="flex-1 p-2 border border-[#22886c]/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#22886c] bg-white/5 text-white placeholder-white/50 transition-colors"
                                 />
                                 <button
                                     onClick={() => setIsVoiceModalOpen(true)}
-                                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium"
+                                    className="px-4 py-2 bg-[#22886c]/10 hover:bg-[#22886c]/20 text-white/90 rounded-lg font-medium border border-[#22886c]/20 transition-colors"
                                 >
                                     🎤
                                 </button>
                                 <button
                                     onClick={query}
                                     disabled={!prompt.trim() || (progress.progress > 0 && progress.progress < 100)}
-                                    className={`px-4 py-2 bg-sky-400 text-white rounded-lg font-medium
+                                    className={`px-4 py-2 bg-[#22886c] text-white rounded-lg font-medium transition-all duration-300
                                         ${progress.progress > 0 && progress.progress < 100
                                             ? 'opacity-50 cursor-not-allowed'
-                                            : 'hover:bg-sky-500 active:bg-sky-600'
+                                            : 'hover:bg-[#1b6d56] hover:scale-105'
                                         }`}
                                 >
                                     Send
@@ -520,7 +524,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div className="w-80 space-y-4 overflow-y-auto max-h-[calc(100vh-2rem)]"> {/* Added max-height and overflow */}
+                    <div className="w-80 space-y-2 overflow-y-auto max-h-[calc(100vh-2rem)]">
                         <AdminPanel />
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />
