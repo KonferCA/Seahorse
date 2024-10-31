@@ -7,7 +7,9 @@ type GoogleDataPanelProps = {
     onDataReceived: (calendar: any[], emails: any[]) => void;
 };
 
-export default function GoogleDataPanel({ onDataReceived }: GoogleDataPanelProps) {
+export default function GoogleDataPanel({
+    onDataReceived,
+}: GoogleDataPanelProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [isConnected, setIsConnected] = useState(false);
@@ -23,19 +25,41 @@ export default function GoogleDataPanel({ onDataReceived }: GoogleDataPanelProps
         setIsLoading(true);
         setError('');
         try {
-            const response = await fetch('/api/user-data', {
+            // fetch emails directly from gmail api
+            const emailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10', {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
-                },
+                }
             });
-            if (response.ok) {
-                const data = await response.json();
-                onDataReceived(data.calendar, data.emails);
-                setIsConnected(true);
-            } else {
-                const errorData = await response.json();
-                setError(errorData.error || 'Failed to fetch data');
-            }
+            const emailList = await emailResponse.json();
+
+            // fetch full email content
+            const emailsWithContent = await Promise.all(
+                emailList.messages.map(async (message: any) => {
+                    const fullEmail = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}`, {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                        }
+                    });
+                    return fullEmail.json();
+                })
+            );
+
+            // fetch calendar events
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const calendarResponse = await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events?` + 
+                `timeMin=${thirtyDaysAgo.toISOString()}&maxResults=10&singleEvents=true&orderBy=startTime`, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                }
+            });
+            const calendarData = await calendarResponse.json();
+
+            onDataReceived(calendarData.items || [], emailsWithContent || []);
+            setIsConnected(true);
         } catch (error) {
             setError('Error connecting to Google services');
             console.error('Error fetching user data:', error);
