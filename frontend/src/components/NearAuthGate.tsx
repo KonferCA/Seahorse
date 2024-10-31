@@ -238,8 +238,8 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
                                 href="https://github.com/KonferCA/Seahorse"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`
-                                    inline-flex items-center px-4 py-2 text-sm font-medium rounded-md
+                                className={` 
+                                    hidden lg:inline-flex items-center px-4 py-2 text-sm font-medium rounded-md
                                     border-2 border-[#22886c] text-[#22886c]
                                     transition-all duration-300
                                     ${scrolled
