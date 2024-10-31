@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
 
 export type Message = {
     role: 'user' | 'assistant' | 'context';
@@ -55,7 +56,7 @@ export function Chat({ messages, onSendMessage, isLoading }: ChatProps) {
                         >
                             <ReactMarkdown
                                 components={{
-                                    code({node, inline, className, children, ...props}) {
+                                    code: ({ node, inline, className, children, ...props }: any) => {
                                         const match = /language-(\w+)/.exec(className || '');
                                         return !inline && match ? (
                                             <SyntaxHighlighter
@@ -73,7 +74,9 @@ export function Chat({ messages, onSendMessage, isLoading }: ChatProps) {
                                             </code>
                                         );
                                     },
-                                    p: ({children}) => <p className="mb-2 last:mb-0 break-words">{children}</p>,
+                                    p: ({children}) => (
+                                        <p className="mb-2 last:mb-0 break-words">{children}</p>
+                                    ),
                                 }}
                             >
                                 {message.content}
