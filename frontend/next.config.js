@@ -5,7 +5,7 @@ const nextConfig = {
             ...config.experiments,
             asyncWebAssembly: true,
         };
-        
+
         config.output = {
             ...config.output,
             webassemblyModuleFilename: 'static/wasm/[modulehash].wasm',
@@ -14,8 +14,8 @@ const nextConfig = {
         // Add WASM file handling
         config.module.rules.push({
             test: /\.wasm$/,
-            type: "asset/resource"
-        })
+            type: 'asset/resource',
+        });
 
         return config;
     },

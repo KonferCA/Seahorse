@@ -117,6 +117,76 @@ export default function Home() {
         }
     };
 
+    const handleProgress = useCallback(
+        (update: {
+            message: string;
+            progress: number;
+            ragUpdate?: {
+                type: string;
+                total?: number;
+                completed?: number;
+                error?: number;
+                inProgress?: number;
+            };
+        }) => {
+            setProgress((prev) => ({
+                progress: update.progress * 100,
+                text: update.message,
+                timeElapsed: prev.timeElapsed,
+            }));
+
+            if (update.ragUpdate) {
+                setRagGroups((prev) => {
+                    const existingGroup = prev.find(
+                        (g) => g.type === update.ragUpdate!.type
+                    );
+
+                    if (!existingGroup && update.ragUpdate?.total) {
+                        // add new group
+                        return [
+                            ...prev,
+                            {
+                                type: update.ragUpdate.type as any,
+                                total: update.ragUpdate.total,
+                                completed: update.ragUpdate.completed || 0,
+                                error: update.ragUpdate.error || 0,
+                                inProgress: update.ragUpdate.inProgress || 0,
+                            },
+                        ];
+                    } else if (existingGroup) {
+                        // update existing group
+                        return prev.map((group) =>
+                            group.type === update.ragUpdate!.type
+                                ? {
+                                      ...group,
+                                      ...(update.ragUpdate?.total !==
+                                          undefined && {
+                                          total: update.ragUpdate.total,
+                                      }),
+                                      ...(update.ragUpdate?.completed !==
+                                          undefined && {
+                                          completed: update.ragUpdate.completed,
+                                      }),
+                                      ...(update.ragUpdate?.error !==
+                                          undefined && {
+                                          error: update.ragUpdate.error,
+                                      }),
+                                      ...(update.ragUpdate?.inProgress !==
+                                          undefined && {
+                                          inProgress:
+                                              update.ragUpdate.inProgress,
+                                      }),
+                                  }
+                                : group
+                        );
+                    }
+                    return prev;
+                });
+            }
+        },
+        []
+    );
+
     useEffect(() => {
         const create = async () => {
             if (agentRef.current === null) {
@@ -128,71 +198,7 @@ export default function Home() {
 
                 try {
                     const agent = new Agent(selectedModel);
-                    await agent.initialize((update) => {
-                        setProgress((prev) => ({
-                            progress: update.progress * 100,
-                            text: update.message,
-                            timeElapsed: prev.timeElapsed,
-                        }));
-
-                        // handle rag updates
-                        if (update.ragUpdate) {
-                            setRagGroups((prev) => {
-                                const existingGroup = prev.find(
-                                    (g) => g.type === update.ragUpdate!.type
-                                );
-
-                                if (!existingGroup && update.ragUpdate?.total) {
-                                    return [
-                                        ...prev,
-                                        {
-                                            type: update.ragUpdate.type,
-                                            total: update.ragUpdate.total,
-                                            completed:
-                                                update.ragUpdate.completed || 0,
-                                            error: update.ragUpdate.error || 0,
-                                            inProgress:
-                                                update.ragUpdate.inProgress ||
-                                                0,
-                                        },
-                                    ];
-                                } else if (existingGroup) {
-                                    return prev.map((group) =>
-                                        group.type === update.ragUpdate!.type
-                                            ? {
-                                                ...group,
-                                                ...(update.ragUpdate
-                                                    ?.total !== undefined && {
-                                                    total: update.ragUpdate
-                                                        .total,
-                                                }),
-                                                ...(update.ragUpdate
-                                                    ?.completed !==
-                                                    undefined && {
-                                                    completed:
-                                                        update.ragUpdate
-                                                            .completed,
-                                                }),
-                                                ...(update.ragUpdate
-                                                    ?.error !== undefined && {
-                                                    error: update.ragUpdate
-                                                        .error,
-                                                }),
-                                                ...(update.ragUpdate
-                                                    ?.inProgress !==
-                                                    undefined && {
-                                                    inProgress:
-                                                        update.ragUpdate
-                                                            .inProgress,
-                                                }),
-                                            }
-                                            : group
-                                    );
-                                }
-                                return prev;
-                            });
-                        }
-                    });
+                    await agent.initialize(handleProgress);
                     agentRef.current = agent;
                 } catch (error) {
                     console.error('Error initializing:', error);
@@ -268,10 +274,10 @@ export default function Home() {
                             prev.map((group) =>
                                 group.type === item.type
                                     ? {
-                                        ...group,
-                                        completed: group.completed + 1,
-                                        inProgress: group.inProgress - 1,
-                                    }
+                                          ...group,
+                                          completed: group.completed + 1,
+                                          inProgress: group.inProgress - 1,
+                                      }
                                     : group
                             )
                         );
@@ -280,10 +286,10 @@ export default function Home() {
                             prev.map((group) =>
                                 group.type === item.type
                                     ? {
-                                        ...group,
-                                        error: group.error + 1,
-                                        inProgress: group.inProgress - 1,
-                                    }
+                                          ...group,
+                                          error: group.error + 1,
+                                          inProgress: group.inProgress - 1,
+                                      }
                                     : group
                             )
                         );
@@ -444,76 +450,6 @@ export default function Home() {
         });
     };
 
-    const handleProgress = useCallback(
-        (update: {
-            message: string;
-            progress: number;
-            ragUpdate?: {
-                type: string;
-                total?: number;
-                completed?: number;
-                error?: number;
-                inProgress?: number;
-            };
-        }) => {
-            setProgress((prev) => ({
-                progress: update.progress * 100,
-                text: update.message,
-                timeElapsed: prev.timeElapsed,
-            }));
-
-            if (update.ragUpdate) {
-                setRagGroups((prev) => {
-                    const existingGroup = prev.find(
-                        (g) => g.type === update.ragUpdate!.type
-                    );
-
-                    if (!existingGroup && update.ragUpdate?.total) {
-                        // add new group
-                        return [
-                            ...prev,
-                            {
-                                type: update.ragUpdate.type as any,
-                                total: update.ragUpdate.total,
-                                completed: update.ragUpdate.completed || 0,
-                                error: update.ragUpdate.error || 0,
-                                inProgress: update.ragUpdate.inProgress || 0,
-                            },
-                        ];
-                    } else if (existingGroup) {
-                        // update existing group
-                        return prev.map((group) =>
-                            group.type === update.ragUpdate!.type
-                                ? {
-                                    ...group,
-                                    ...(update.ragUpdate?.total !==
-                                        undefined && {
-                                        total: update.ragUpdate.total,
-                                    }),
-                                    ...(update.ragUpdate?.completed !==
-                                        undefined && {
-                                        completed: update.ragUpdate.completed,
-                                    }),
-                                    ...(update.ragUpdate?.error !==
-                                        undefined && {
-                                        error: update.ragUpdate.error,
-                                    }),
-                                    ...(update.ragUpdate?.inProgress !==
-                                        undefined && {
-                                        inProgress:
-                                            update.ragUpdate.inProgress,
-                                    }),
-                                }
-                                : group
-                        );
-                    }
-                    return prev;
-                });
-            }
-        },
-        []
-    );
-
     // Add timer effect
     useEffect(() => {
         let startTime: number | null = null;
@@ -630,11 +566,12 @@ export default function Home() {
                                                     progress.progress < 100)
                                             }
                                             className={`px-4 py-2 bg-[#22886c] text-white rounded-lg font-medium transition-all duration-300
-                                        ${progress.progress > 0 &&
-                                                    progress.progress < 100
-                                                    ? 'opacity-50 cursor-not-allowed'
-                                                    : 'hover:bg-[#1b6d56] hover:scale-105'
-                                                }`}
+                                        ${
+                                            progress.progress > 0 &&
+                                            progress.progress < 100
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:bg-[#1b6d56] hover:scale-105'
+                                        }`}
                                         >
                                             Send
                                         </button>
