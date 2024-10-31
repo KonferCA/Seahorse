@@ -12,7 +12,24 @@ import {
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 } from '@langchain/core/prompts';
-import { InitProgressCallback, prebuiltAppConfig } from '@mlc-ai/web-llm';
+import {
+    InitProgressCallback as WebLLMInitProgressCallback,
+    prebuiltAppConfig,
+} from '@mlc-ai/web-llm';
+
+type InitProgressCallback = (update: {
+    message: string;
+    progress: number;
+    ragUpdate?: {
+        type: 'email' | 'calendar' | 'document' | 'note';
+        total?: number;
+        completed?: number;
+        error?: number;
+        inProgress?: number;
+    };
+    text: string;
+    timeElapsed: number;
+}) => void;
 
 export class Agent {
     private vectorStore: VoyVectorStore | null = null;
@@ -61,7 +78,9 @@ export class Agent {
             },
         });
         // await this.llm.reload('Phi-3.5-mini-instruct-q4f16_1-MLC-1k');
-        await this.llm.initialize(progressCallback);
+        await this.llm.initialize(
+            progressCallback as WebLLMInitProgressCallback
+        );
 
         // Create RAG prompt template
         const prompt = ChatPromptTemplate.fromMessages([
@@ -115,7 +134,8 @@ export class Agent {
                         metadata: { source: 'note', type: 'note' },
                     })
             );
-            const documents = await this.textSplitter!.splitDocuments(rawDocuments);
+            const documents =
+                await this.textSplitter!.splitDocuments(rawDocuments);
             if (this.vectorStore !== null) {
                 await this.vectorStore.addDocuments(documents);
             }
@@ -176,7 +196,7 @@ export class Agent {
     async generateDirectResponse(prompt: string): Promise<string> {
         try {
             const response = await this.defaultChain!.invoke({
-                question: prompt
+                question: prompt,
             });
             return response;
         } catch (error) {
