@@ -79,17 +79,17 @@ ${parsed.attendees.map(a => `- ${a}`).join('\n')}`
         const parsed = parseDocumentContent(item);
         switch (parsed.type) {
             case 'calendar':
-                return <HiOutlineCalendar className="w-4 h-4 text-green-600" />;
+                return <HiOutlineCalendar className="w-4 h-4 text-[#22886c]" />;
             case 'email':
-                return <HiOutlineEnvelope className="w-4 h-4 text-blue-600" />;
+                return <HiOutlineEnvelope className="w-4 h-4 text-[#22886c]" />;
             default:
-                return <HiOutlineDocument className="w-4 h-4 text-gray-600" />;
+                return <HiOutlineDocument className="w-4 h-4 text-[#22886c]" />;
         }
     };
 
     return (
-        <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <div className="bg-[#0f2c24] rounded-lg p-6 border-2 border-[#22886c]/20">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
                 <span>📎</span> Context
             </h2>
             
@@ -102,7 +102,7 @@ ${parsed.attendees.map(a => `- ${a}`).join('\n')}`
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             onClick={() => setSelectedItem(item)}
-                            className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-all hover:shadow-md"
+                            className="p-4 border border-[#22886c]/20 rounded-lg bg-[#071b16] cursor-pointer transition-all"
                         >
                             <div className="flex justify-between items-start">
                                 <div className="flex gap-3">
@@ -110,15 +110,15 @@ ${parsed.attendees.map(a => `- ${a}`).join('\n')}`
                                         {getDocumentIcon(item)}
                                     </div>
                                     <div>
-                                        <h3 className="font-medium text-sm leading-5">
+                                        <h3 className="font-medium text-sm leading-5 text-white">
                                             {parsed.title}
                                         </h3>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-xs text-white/50 mt-1">
                                             Relevance: {(item.metadata.score * 100).toFixed(1)}%
                                         </p>
                                     </div>
                                 </div>
-                                <span className="text-xs text-gray-500 shrink-0 ml-4">
+                                <span className="text-xs text-white/50 shrink-0 ml-4">
                                     {new Date(item.timestamp).toLocaleTimeString()}
                                 </span>
                             </div>
@@ -139,35 +139,35 @@ ${parsed.attendees.map(a => `- ${a}`).join('\n')}`
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-white rounded-lg w-full max-w-2xl overflow-hidden shadow-xl"
+                            className="bg-[#0f2c24] rounded-lg w-full max-w-2xl overflow-hidden shadow-xl border-2 border-[#22886c]/20"
                         >
-                            <div className="p-6 border-b border-gray-200">
+                            <div className="p-6 border-b border-[#22886c]/20">
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-2">
                                         {getDocumentIcon(selectedItem)}
-                                        <h2 className="text-xl font-semibold">
+                                        <h2 className="text-xl font-semibold text-white">
                                             {parseDocumentContent(selectedItem).title}
                                         </h2>
                                     </div>
                                     <button 
                                         onClick={() => setSelectedItem(null)}
-                                        className="text-gray-500 hover:text-gray-700"
+                                        className="text-white/50 hover:text-white"
                                     >
                                         <HiOutlineXMark className="w-6 h-6" />
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="p-6 prose prose-sm max-w-none">
+                            <div className="p-6 prose prose-invert prose-sm max-w-none text-white/90">
                                 <ReactMarkdown>
                                     {parseDocumentContent(selectedItem).formattedContent}
                                 </ReactMarkdown>
                             </div>
 
-                            <div className="p-6 border-t border-gray-200 flex justify-end">
+                            <div className="p-6 border-t border-[#22886c]/20 flex justify-end">
                                 <button
                                     onClick={() => setSelectedItem(null)}
-                                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                                    className="px-4 py-2 bg-[#071b16] text-white border-2 border-[#22886c]/20 rounded-lg"
                                 >
                                     Close
                                 </button>

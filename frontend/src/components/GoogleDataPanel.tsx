@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { google } from 'googleapis';
 import Image from 'next/image';
 import googleIcon from '@/components/icons/google.svg';
 
@@ -25,7 +24,6 @@ export default function GoogleDataPanel({
     const fetchUserData = async (accessToken: string) => {
         setIsLoading(true);
         setError('');
-
         try {
             // fetch emails directly from gmail api
             const emailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10', {
@@ -71,20 +69,17 @@ export default function GoogleDataPanel({
     };
 
     return (
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Import Google Data
-            </h3>
-
+        <div className="w-full">
             <button
                 onClick={() => login()}
                 disabled={isLoading || isConnected}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border 
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg
+                    transition-colors duration-300
                     ${isConnected
-                        ? 'bg-green-50 border-green-200 text-green-700 cursor-not-allowed'
+                        ? 'bg-[#22886c]/10 border-2 border-[#22886c] text-[#22886c] cursor-not-allowed'
                         : isLoading
-                            ? 'bg-gray-100 border-gray-200 cursor-not-allowed'
-                            : 'bg-white border-gray-300 hover:bg-gray-50'
+                        ? 'bg-[#0f2c24] border-2 border-[#22886c]/20 text-white/50 cursor-not-allowed'
+                        : 'bg-[#22886c] border-2 border-[#22886c] text-white hover:bg-[#1b6d56]'
                     }`}
             >
                 <Image
@@ -94,16 +89,18 @@ export default function GoogleDataPanel({
                     width={20}
                     height={20}
                 />
-                <span className="text-gray-700 font-medium">
+                <span className="font-medium">
                     {isConnected
                         ? 'Google Account Connected'
                         : isLoading
-                            ? 'Connecting...'
-                            : 'Connect Google Account'}
+                        ? 'Connecting...'
+                        : 'Connect Google Account'
+                    }
                 </span>
             </button>
-
-            {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
+            {error && (
+                <div className="mt-3 text-sm text-[#22886c]">{error}</div>
+            )}
         </div>
     );
-}
+};

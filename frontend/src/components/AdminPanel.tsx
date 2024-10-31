@@ -269,9 +269,7 @@ export default function AdminPanel() {
         <>
             <motion.button
                 onClick={() => setIsOpen(true)}
-                className="w-full p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium transition-colors"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                className="w-full p-2 bg-[#22886c] text-white rounded-lg font-medium border-2 border-[#22886c] transition-colors hover:bg-[#1b6d56]"
             >
                 Open Admin Panel
             </motion.button>
