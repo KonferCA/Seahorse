@@ -37,7 +37,7 @@ export default function PayoutPanel() {
         setIsLoading(true);
         try {
             const allScores = usages.flatMap(usage => 
-                (usage.pendingScores || []).map(score => ({
+                (usage.pendingScores || []).map((score: number) => ({
                     providerId: usage.providerId,
                     relevancyScore: Math.floor(score * 100)
                 }))
