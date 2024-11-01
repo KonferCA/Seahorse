@@ -1,56 +1,16 @@
-'use client';
+import { Metadata } from 'next';
+import iconLogo from '@/components/icons/logo.png';
 
-import { useEffect, useState, Suspense } from 'react';
-import { GoogleOAuthProvider } from '@react-oauth/google';
-import { Toaster } from 'react-hot-toast';
-import "./globals.css";
-
-import { NearContext, Wallet } from '@wallets';
-
-import { NetworkId } from '../config';
-import { useTransactionToast } from '@/hooks/useTransactionToast';
-import { ReactNode } from 'react';
-
-const wallet = new Wallet({ networkId: NetworkId });
-
-const TransactionToastWrapper = () => {
-  useTransactionToast();
-  return null;
+export const metadata: Metadata = {
+    title: 'Seahorse | Mental Wellness Platform',
+    description: 'A decentralized platform combining AI technology with real-world community building to support mental wellness.',
+    icons: {
+        icon: iconLogo.src
+    },
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  const [signedAccountId, setSignedAccountId] = useState('');
+import ClientLayout from '@/layouts/client';
 
-  useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
-      console.error('Missing GOOGLE_CLIENT_ID environment variable');
-      return;
-    }
-    wallet.startUp(setSignedAccountId);
-  }, []);
-
-  return (
-    <html lang="en">
-      <body>
-        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
-          <NearContext.Provider value={{ wallet: wallet as any, signedAccountId }}>
-            <Suspense fallback={null}>
-              {children}
-              <TransactionToastWrapper />
-              <Toaster 
-                position="bottom-right"
-                toastOptions={{
-                  duration: 5000,
-                  style: {
-                    background: '#fff',
-                    color: '#363636',
-                  }
-                }}
-              />
-            </Suspense>
-          </NearContext.Provider>
-        </GoogleOAuthProvider>
-      </body>
-    </html>
-  );
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+    return <ClientLayout>{children}</ClientLayout>;
 }
