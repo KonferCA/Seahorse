@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 // import GoogleAuth from './utils/GoogleAuth';
 import { formatGoogleData } from '@/utils/formatGoogleData';
 // import { useGoogleData } from './hooks/useGoogleData';
@@ -20,12 +20,6 @@ import ContextPanel, { ContextItem } from '@/components/ContextPanel';
 import AdminPanel from '@/components/AdminPanel';
 import PayoutPanel from '@/components/PayoutPanel';
 import { ProviderTracker } from '@/services/ProviderTracker';
-import type { Note } from '@/components/NotesPanel';
-import { GoogleOAuthProvider } from '@react-oauth/google';
-import { Toaster } from 'react-hot-toast';
-import { NearContext, Wallet } from '@wallets';
-import { NetworkId } from '../config';
-import { useTransactionToast } from '@/hooks/useTransactionToast';
 
 type ProgressState = {
     progress: number;
@@ -43,18 +37,14 @@ type RAGItem = {
 
 // add interface for search results
 interface SearchResult {
-    pageContent: string;
+    chunk: string;
+    score: number;
     metadata: {
-        score: number;
         type: string;
         title?: string;
-        source?: string;
-        providerId?: string;
         [key: string]: any;
     };
 }
-
-const wallet = new Wallet({ networkId: NetworkId });
 
 export default function Home() {
     // const selectedModel = 'Phi-3.5-mini-instruct-q4f16_1-MLC-1k';
@@ -90,17 +80,6 @@ export default function Home() {
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
     const [contextItems, setContextItems] = useState<ContextItem[]>([]);
-
-    const [signedAccountId, setSignedAccountId] = useState('');
-    useTransactionToast();
-
-    useEffect(() => {
-        if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
-            console.error('Missing GOOGLE_CLIENT_ID environment variable');
-            return;
-        }
-        wallet.startUp(setSignedAccountId);
-    }, []);
 
     const handleStream = useCallback((token: string) => {
         setCurrentStreamingMessage((prev) => prev + token);
@@ -156,32 +135,32 @@ export default function Home() {
                                     return prev.map((group) =>
                                         group.type === update.ragUpdate!.type
                                             ? {
-                                                ...group,
-                                                ...(update.ragUpdate
-                                                    ?.total !== undefined && {
-                                                    total: update.ragUpdate
-                                                        .total,
-                                                }),
-                                                ...(update.ragUpdate
-                                                    ?.completed !==
-                                                    undefined && {
-                                                    completed:
-                                                        update.ragUpdate
-                                                            .completed,
-                                                }),
-                                                ...(update.ragUpdate
-                                                    ?.error !== undefined && {
-                                                    error: update.ragUpdate
-                                                        .error,
-                                                }),
-                                                ...(update.ragUpdate
-                                                    ?.inProgress !==
-                                                    undefined && {
-                                                    inProgress:
-                                                        update.ragUpdate
-                                                            .inProgress,
-                                                }),
-                                            }
+                                                  ...group,
+                                                  ...(update.ragUpdate
+                                                      ?.total !== undefined && {
+                                                      total: update.ragUpdate
+                                                          .total,
+                                                  }),
+                                                  ...(update.ragUpdate
+                                                      ?.completed !==
+                                                      undefined && {
+                                                      completed:
+                                                          update.ragUpdate
+                                                              .completed,
+                                                  }),
+                                                  ...(update.ragUpdate
+                                                      ?.error !== undefined && {
+                                                      error: update.ragUpdate
+                                                          .error,
+                                                  }),
+                                                  ...(update.ragUpdate
+                                                      ?.inProgress !==
+                                                      undefined && {
+                                                      inProgress:
+                                                          update.ragUpdate
+                                                              .inProgress,
+                                                  }),
+                                              }
                                             : group
                                     );
                                 }
@@ -264,10 +243,10 @@ export default function Home() {
                             prev.map((group) =>
                                 group.type === item.type
                                     ? {
-                                        ...group,
-                                        completed: group.completed + 1,
-                                        inProgress: group.inProgress - 1,
-                                    }
+                                          ...group,
+                                          completed: group.completed + 1,
+                                          inProgress: group.inProgress - 1,
+                                      }
                                     : group
                             )
                         );
@@ -276,10 +255,10 @@ export default function Home() {
                             prev.map((group) =>
                                 group.type === item.type
                                     ? {
-                                        ...group,
-                                        error: group.error + 1,
-                                        inProgress: group.inProgress - 1,
-                                    }
+                                          ...group,
+                                          error: group.error + 1,
+                                          inProgress: group.inProgress - 1,
+                                      }
                                     : group
                             )
                         );
@@ -344,7 +323,7 @@ export default function Home() {
 
             // add context messages if any found
             if (results.length > 0) {
-                const newContextItems = results.map(([doc]) => ({
+                const newContextItems = results.map(([doc, score]) => ({
                     id: Math.random().toString(36).substring(2, 9),
                     type: (doc.metadata.type || 'document') as
                         | 'email'
@@ -360,16 +339,19 @@ export default function Home() {
 
                 setContextItems(newContextItems);
 
-                const contextMessages = results.map(([doc]) => ({
-                    role: 'context' as const,
-                    content: doc.pageContent,
-                    timestamp: new Date(),
-                    metadata: {
-                        type: doc.metadata?.type || 'document',
-                        title: doc.metadata?.title || 'Untitled',
-                        score: doc.metadata?.score || 0,
-                    },
-                }));
+                const contextMessages = results.map((docTuple) => {
+                    const [doc, score] = docTuple;
+                    return {
+                        role: 'context' as const,
+                        content: doc.pageContent,
+                        timestamp: new Date(),
+                        metadata: {
+                            type: doc.metadata.type || 'document',
+                            title: doc.metadata.title || 'Untitled',
+                            score,
+                        },
+                    };
+                });
                 setMessages((prev) => [...prev, ...contextMessages]);
             } else {
                 setContextItems([]);
@@ -465,16 +447,21 @@ export default function Home() {
         };
     }, [progress.progress]);
 
-    // Create a wrapper function that matches the NotesPanel props type
-    const handleSaveNote = (note: Note) => {
-        return saveNoteContent(note.content);
-    };
-
     return (
-            <NearContext.Provider
-                value={{ wallet: wallet as any, signedAccountId }}
-            >
-                <NearAuthGate>
+        <NearAuthGate>
+            <main className="min-h-screen relative">
+                <div className="fixed inset-0 bg-[#071b16]">
+                    <div className="absolute bottom-0 left-0 right-0 top-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]"></div>
+                </div>
+
+                <div className="relative max-w-6xl mx-auto flex gap-4 p-4 h-[calc(100vh-2rem)]">
+                    <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-lg shadow-lg flex flex-col border border-white/10">
+                        <div className="p-4 border-b border-white/10">
+                            <h2 className="text-xl font-semibold text-white/90">
+                                welcome to seahorse.
+                            </h2>
+                        </div>
+
                         <div className="flex-1 flex flex-col overflow-hidden">
                             <Chat
                                 messages={messages}
@@ -524,10 +511,11 @@ export default function Home() {
                                             progress.progress < 100)
                                     }
                                     className={`px-4 py-2 bg-[#22886c] text-white rounded-lg font-medium transition-all duration-300
-                                        ${progress.progress > 0 &&
+                                        ${
+                                            progress.progress > 0 &&
                                             progress.progress < 100
-                                            ? 'opacity-50 cursor-not-allowed'
-                                            : 'hover:bg-[#1b6d56] hover:scale-105'
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:bg-[#1b6d56] hover:scale-105'
                                         }`}
                                 >
                                     Send
