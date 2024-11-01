@@ -68,9 +68,9 @@ export default function Home() {
 
     const agentRef = useRef<Agent | null>(null);
 
-    const { notes, saveNote, deleteNote } = useNotes({ 
+    const { notes, saveNote, deleteNote } = useNotes({
         agent: agentRef.current,
-        setRagGroups 
+        setRagGroups,
     });
 
     const [currentStreamingMessage, setCurrentStreamingMessage] = useState('');
@@ -82,7 +82,7 @@ export default function Home() {
     const [contextItems, setContextItems] = useState<ContextItem[]>([]);
 
     const handleStream = useCallback((token: string) => {
-        setCurrentStreamingMessage(prev => prev + token);
+        setCurrentStreamingMessage((prev) => prev + token);
     }, []);
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -90,7 +90,7 @@ export default function Home() {
             e.preventDefault();
             query();
         }
-    }
+    };
 
     useEffect(() => {
         const create = async () => {
@@ -98,41 +98,69 @@ export default function Home() {
                 setProgress({
                     progress: 0,
                     text: 'Preparing environment...',
-                    timeElapsed: 0
+                    timeElapsed: 0,
                 });
 
                 try {
                     const agent = new Agent(selectedModel);
                     await agent.initialize((update) => {
-                        setProgress(prev => ({
+                        setProgress((prev) => ({
                             progress: update.progress * 100,
-                            text: update.message,
-                            timeElapsed: prev.timeElapsed
+                            text: update.message || update.text,
+                            timeElapsed: prev.timeElapsed,
                         }));
 
                         // handle rag updates
                         if (update.ragUpdate) {
-                            setRagGroups(prev => {
-                                const existingGroup = prev.find(g => g.type === update.ragUpdate!.type);
-                                
+                            setRagGroups((prev) => {
+                                const existingGroup = prev.find(
+                                    (g) => g.type === update.ragUpdate!.type
+                                );
+
                                 if (!existingGroup && update.ragUpdate?.total) {
-                                    return [...prev, {
-                                        type: update.ragUpdate.type,
-                                        total: update.ragUpdate.total,
-                                        completed: update.ragUpdate.completed || 0,
-                                        error: update.ragUpdate.error || 0,
-                                        inProgress: update.ragUpdate.inProgress || 0
-                                    }];
+                                    return [
+                                        ...prev,
+                                        {
+                                            type: update.ragUpdate.type,
+                                            total: update.ragUpdate.total,
+                                            completed:
+                                                update.ragUpdate.completed || 0,
+                                            error: update.ragUpdate.error || 0,
+                                            inProgress:
+                                                update.ragUpdate.inProgress ||
+                                                0,
+                                        },
+                                    ];
                                 } else if (existingGroup) {
-                                    return prev.map(group => 
+                                    return prev.map((group) =>
                                         group.type === update.ragUpdate!.type
                                             ? {
-                                                ...group,
-                                                ...(update.ragUpdate?.total !== undefined && { total: update.ragUpdate.total }),
-                                                ...(update.ragUpdate?.completed !== undefined && { completed: update.ragUpdate.completed }),
-                                                ...(update.ragUpdate?.error !== undefined && { error: update.ragUpdate.error }),
-                                                ...(update.ragUpdate?.inProgress !== undefined && { inProgress: update.ragUpdate.inProgress })
-                                            }
+                                                  ...group,
+                                                  ...(update.ragUpdate
+                                                      ?.total !== undefined && {
+                                                      total: update.ragUpdate
+                                                          .total,
+                                                  }),
+                                                  ...(update.ragUpdate
+                                                      ?.completed !==
+                                                      undefined && {
+                                                      completed:
+                                                          update.ragUpdate
+                                                              .completed,
+                                                  }),
+                                                  ...(update.ragUpdate
+                                                      ?.error !== undefined && {
+                                                      error: update.ragUpdate
+                                                          .error,
+                                                  }),
+                                                  ...(update.ragUpdate
+                                                      ?.inProgress !==
+                                                      undefined && {
+                                                      inProgress:
+                                                          update.ragUpdate
+                                                              .inProgress,
+                                                  }),
+                                              }
                                             : group
                                     );
                                 }
@@ -146,7 +174,7 @@ export default function Home() {
                     setProgress({
                         progress: 0,
                         text: 'Error initializing model. Please refresh.',
-                        timeElapsed: 0
+                        timeElapsed: 0,
                     });
                 }
             }
@@ -215,10 +243,10 @@ export default function Home() {
                             prev.map((group) =>
                                 group.type === item.type
                                     ? {
-                                        ...group,
-                                        completed: group.completed + 1,
-                                        inProgress: group.inProgress - 1,
-                                    }
+                                          ...group,
+                                          completed: group.completed + 1,
+                                          inProgress: group.inProgress - 1,
+                                      }
                                     : group
                             )
                         );
@@ -227,10 +255,10 @@ export default function Home() {
                             prev.map((group) =>
                                 group.type === item.type
                                     ? {
-                                        ...group,
-                                        error: group.error + 1,
-                                        inProgress: group.inProgress - 1,
-                                    }
+                                          ...group,
+                                          error: group.error + 1,
+                                          inProgress: group.inProgress - 1,
+                                      }
                                     : group
                             )
                         );
@@ -252,28 +280,35 @@ export default function Home() {
 
     const query = async () => {
         if (!prompt.trim() || !agentRef.current) return;
-        
+
         const currentPrompt = prompt;
         setPrompt('');
         messageContentRef.current = '';
-        
+
         try {
-            setMessages(prev => [
+            setMessages((prev) => [
                 ...prev,
-                { role: 'user', content: currentPrompt, timestamp: new Date() }
+                { role: 'user', content: currentPrompt, timestamp: new Date() },
             ]);
-            
+
             // get similar documents
-            const results = await agentRef.current.searchSimilar(currentPrompt, 4);
-            
+            const results = await agentRef.current.searchSimilar(
+                currentPrompt,
+                4
+            );
+
             // track provider usage - only track highest score per provider per query
             const tracker = new ProviderTracker();
             const providerScores = new Map<string, number>();
 
             // first find highest score per provider
             for (const [doc, score] of results) {
-                if (doc.metadata?.source === 'provider' && doc.metadata?.providerId) {
-                    const currentHighest = providerScores.get(doc.metadata.providerId) || 0;
+                if (
+                    doc.metadata?.source === 'provider' &&
+                    doc.metadata?.providerId
+                ) {
+                    const currentHighest =
+                        providerScores.get(doc.metadata.providerId) || 0;
                     if (score > currentHighest) {
                         providerScores.set(doc.metadata.providerId, score);
                     }
@@ -285,18 +320,21 @@ export default function Home() {
                 const normalizedScore = Math.min(Math.max(score, 0), 1);
                 await tracker.logProviderUsage(providerId, normalizedScore);
             }
-            
+
             // add context messages if any found
             if (results.length > 0) {
                 const newContextItems = results.map(([doc, score]) => ({
                     id: Math.random().toString(36).substring(2, 9),
-                    type: (doc.metadata.type || 'document') as 'email' | 'calendar' | 'document',
+                    type: (doc.metadata.type || 'document') as
+                        | 'email'
+                        | 'calendar'
+                        | 'document',
                     title: doc.metadata.title || 'Untitled',
                     content: doc.pageContent,
                     timestamp: new Date(),
                     metadata: {
-                        score
-                    }
+                        score,
+                    },
                 }));
 
                 setContextItems(newContextItems);
@@ -320,20 +358,20 @@ export default function Home() {
             }
 
             // add empty assistant message for streaming
-            setMessages(prev => [
+            setMessages((prev) => [
                 ...prev,
-                { 
-                    role: 'assistant', 
-                    content: '', 
+                {
+                    role: 'assistant',
+                    content: '',
                     timestamp: new Date(),
-                    isStreaming: true 
-                }
+                    isStreaming: true,
+                },
             ]);
-            
+
             // set up streaming callback
             agentRef.current.setStreamingCallback((token: string) => {
                 messageContentRef.current += token;
-                setMessages(prev => {
+                setMessages((prev) => {
                     const newMessages = [...prev];
                     const lastMessage = newMessages[newMessages.length - 1];
                     if (lastMessage.role === 'assistant') {
@@ -342,12 +380,13 @@ export default function Home() {
                     return newMessages;
                 });
             });
-            
+
             // generate response
-            const response = await agentRef.current.generateResponse(currentPrompt);
-            
+            const response =
+                await agentRef.current.generateResponse(currentPrompt);
+
             // update final message and remove streaming state
-            setMessages(prev => {
+            setMessages((prev) => {
                 const newMessages = [...prev];
                 const lastMessage = newMessages[newMessages.length - 1];
                 if (lastMessage.role === 'assistant') {
@@ -355,17 +394,18 @@ export default function Home() {
                 }
                 return newMessages;
             });
-            
+
             setPrompt('');
         } catch (error) {
             console.error('Error during chat:', error);
-            setMessages(prev => [
+            setMessages((prev) => [
                 ...prev,
                 {
                     role: 'assistant',
-                    content: 'Sorry, there was an error processing your request.',
-                    timestamp: new Date()
-                }
+                    content:
+                        'Sorry, there was an error processing your request.',
+                    timestamp: new Date(),
+                },
             ]);
         }
     };
@@ -378,55 +418,6 @@ export default function Home() {
         });
     };
 
-    const handleProgress = useCallback((update: { 
-        message: string; 
-        progress: number;
-        ragUpdate?: {
-            type: string;
-            total?: number;
-            completed?: number;
-            error?: number;
-            inProgress?: number;
-        };
-    }) => {
-        setProgress(prev => ({
-            progress: update.progress * 100,
-            text: update.message,
-            timeElapsed: prev.timeElapsed
-        }));
-
-        if (update.ragUpdate) {
-            setRagGroups(prev => {
-                const existingGroup = prev.find(g => g.type === update.ragUpdate!.type);
-                
-                if (!existingGroup && update.ragUpdate?.total) {
-                    // add new group
-                    return [...prev, {
-                        type: update.ragUpdate.type as any,
-                        total: update.ragUpdate.total,
-                        completed: update.ragUpdate.completed || 0,
-                        error: update.ragUpdate.error || 0,
-                        inProgress: update.ragUpdate.inProgress || 0
-                    }];
-                } else if (existingGroup) {
-                    // update existing group
-                    return prev.map(group => 
-                        group.type === update.ragUpdate!.type
-                            ? {
-                                ...group,
-                                ...(update.ragUpdate?.total !== undefined && { total: update.ragUpdate.total }),
-                                ...(update.ragUpdate?.completed !== undefined && { completed: update.ragUpdate.completed }),
-                                ...(update.ragUpdate?.error !== undefined && { error: update.ragUpdate.error }),
-                                ...(update.ragUpdate?.inProgress !== undefined && { inProgress: update.ragUpdate.inProgress })
-                            }
-                            : group
-                    );
-                }
-                return prev;
-            });
-        }
-    }, []);
-
     // Add timer effect
     useEffect(() => {
         let startTime: number | null = null;
@@ -437,9 +428,9 @@ export default function Home() {
             const elapsed = (timestamp - startTime) / 1000;
 
             if (progress.progress > 0 && progress.progress < 100) {
-                setProgress(prev => ({
+                setProgress((prev) => ({
                     ...prev,
-                    timeElapsed: elapsed
+                    timeElapsed: elapsed,
                 }));
                 animationFrameId = requestAnimationFrame(updateTimer);
             }
@@ -475,24 +466,27 @@ export default function Home() {
                             <Chat
                                 messages={messages}
                                 onSendMessage={query}
-                                isLoading={progress.progress > 0 && progress.progress < 100}
+                                isLoading={
+                                    progress.progress > 0 &&
+                                    progress.progress < 100
+                                }
                             />
                         </div>
 
-                        {progress.progress > 0 && progress.progress < 100 && (
-                            <div className="px-4 py-2 border-t border-white/10">
-                                <div className="flex items-center justify-between text-xs text-white/70 mb-1">
-                                    <span>{progress.text}</span>
-                                    <span>{progress.timeElapsed?.toFixed(1) || '0.0'}s</span>
-                                </div>
-                                <div className="w-full bg-white/5 rounded-full h-1">
-                                    <div 
-                                        className="bg-sky-400 h-1 rounded-full transition-all duration-300" 
-                                        style={{ width: `${progress.progress}%` }}
-                                    />
-                                </div>
+                        <div className="px-4 py-2 border-t border-white/10">
+                            <div className="flex items-center justify-between text-xs text-white/70 mb-1">
+                                <span>{progress.text}</span>
+                                <span>
+                                    {progress.timeElapsed?.toFixed(1) || '0.0'}s
+                                </span>
                             </div>
-                        )}
+                            <div className="w-full bg-white/5 rounded-full h-1">
+                                <div
+                                    className="bg-sky-400 h-1 rounded-full transition-all duration-300"
+                                    style={{ width: `${progress.progress}%` }}
+                                />
+                            </div>
+                        </div>
 
                         <div className="p-4 border-t border-white/10">
                             <div className="flex gap-2">
@@ -511,11 +505,17 @@ export default function Home() {
                                 </button>
                                 <button
                                     onClick={query}
-                                    disabled={!prompt.trim() || (progress.progress > 0 && progress.progress < 100)}
+                                    disabled={
+                                        !prompt.trim() ||
+                                        (progress.progress > 0 &&
+                                            progress.progress < 100)
+                                    }
                                     className={`px-4 py-2 bg-[#22886c] text-white rounded-lg font-medium transition-all duration-300
-                                        ${progress.progress > 0 && progress.progress < 100
-                                            ? 'opacity-50 cursor-not-allowed'
-                                            : 'hover:bg-[#1b6d56] hover:scale-105'
+                                        ${
+                                            progress.progress > 0 &&
+                                            progress.progress < 100
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:bg-[#1b6d56] hover:scale-105'
                                         }`}
                                 >
                                     Send
@@ -529,8 +529,8 @@ export default function Home() {
                         <GoogleDataPanel onDataReceived={handleGoogleData} />
                         <RAGStatusPanel groups={ragGroups} />
                         <PayoutPanel />
-                        <NotesPanel 
-                            notes={notes} 
+                        <NotesPanel
+                            notes={notes}
                             onSave={saveNote}
                             onDelete={deleteNote}
                         />

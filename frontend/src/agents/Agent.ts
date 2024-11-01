@@ -12,13 +12,12 @@ import {
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 } from '@langchain/core/prompts';
-import { prebuiltAppConfig } from '@mlc-ai/web-llm';
+import { InitProgressReport, prebuiltAppConfig } from '@mlc-ai/web-llm';
 import { Wallet } from '@/wallets';
 import { NetworkId } from '@/config';
 
-type InitProgressCallback = (update: {
+interface ProgressReport extends InitProgressReport {
     message: string;
-    progress: number;
     ragUpdate?: {
         type: 'email' | 'calendar' | 'document' | 'note';
         total?: number;
@@ -26,7 +25,9 @@ type InitProgressCallback = (update: {
         error?: number;
         inProgress?: number;
     };
-}) => void;
+}
+
+type InitProgressCallback = (update: ProgressReport) => void;
 
 const SYSTEM_PROMPT_TEMPLATE = `
 you are a supportive and caring friend who loves to chat! keep your tone casual, warm, and encouraging.
