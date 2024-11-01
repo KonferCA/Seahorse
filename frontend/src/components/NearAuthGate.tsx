@@ -136,12 +136,12 @@ const FAQSection: React.FC = () => {
                     </div>
 
                     <div className="mt-12 text-center">
-                        <button 
-                            onClick={() => wallet.signIn()}
+                        <Link 
+                            href="/coming-soon"
                             className="px-6 py-3 bg-[#22886c] text-white rounded-lg hover:bg-[#1b6d56] transition-colors font-medium"
                         >
                             Get Started Now
-                        </button>
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -476,12 +476,21 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
                                 "Seahorse is designed to bridge the gap between digital wellness tools and real-world connections. 
                                 We believe in the power of community support, enhanced by secure technology that respects your privacy."
                             </p>
-                            <button 
-                                onClick={() => wallet.signIn()}
-                                className="px-8 py-4 bg-[#22886c] text-white rounded-lg hover:bg-[#1b6d56] transition-colors font-medium transform hover:scale-105"
+                            <Link
+                                href="/coming-soon"
+                                className={`
+                                    inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white
+                                    transition-all duration-300
+                                    ${scrolled
+                                        ? 'bg-[#22886c]/90 hover:bg-[#22886c] backdrop-blur-md'
+                                        : 'bg-[#22886c] hover:bg-[#1b6d56]'
+                                    }
+                                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#22886c]
+                                    hover:scale-105
+                                `}
                             >
                                 Join Seahorse
-                            </button>
+                            </Link>
                         </div>
 
                         <VideoSection />
