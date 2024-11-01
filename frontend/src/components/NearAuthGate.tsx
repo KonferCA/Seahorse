@@ -3,7 +3,7 @@ import { Wallet } from '@wallets';
 import { NetworkId } from '@/config';
 import Image from 'next/image';
 import logoIcon from '@/components/icons/logo.png';
-import { Link } from 'react-scroll';
+import { Link as ScrollLink } from 'react-scroll';
 import { 
     PiChatCircleText, 
     PiShieldStar, 
@@ -17,6 +17,29 @@ import {
     PiGithubLogo,
     PiPlayCircle,
 } from "react-icons/pi";
+import Link from 'next/link';
+
+const ScrollNavLink: React.FC<{
+    to: string;
+    children: React.ReactNode;
+    className?: string;
+    activeClass?: string;
+}> = ({ to, children, className, activeClass }) => {
+    return (
+        <ScrollLink
+            to={to}
+            spy={true}
+            smooth={true}
+            offset={-80}
+            duration={500}
+            className={className}
+            activeClass={activeClass}
+            href="#"
+        >
+            {children}
+        </ScrollLink>
+    );
+};
 
 const faqData = [
     {
@@ -247,19 +270,15 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
                             
                             <nav className="hidden md:flex space-x-8">
                                 {headerLinks.map((link) => (
-                                    <Link
+                                    <ScrollNavLink
                                         key={link.to}
                                         to={link.to}
-                                        spy={true}
-                                        smooth={true}
-                                        offset={-80}
-                                        duration={500}
                                         className="text-gray-300 hover:text-[#22886c] cursor-pointer transition-all duration-300 hover:scale-105 relative group"
                                         activeClass="!text-[#22886c]"
                                     >
                                         {link.name}
                                         <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#22886c] transition-all duration-300 group-hover:w-full" />
-                                    </Link>
+                                    </ScrollNavLink>
                                 ))}
                             </nav>
                         </div>
@@ -285,8 +304,8 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
                                 Contribute
                             </a>
 
-                            <button
-                                onClick={() => wallet.signIn()}
+                            <Link
+                                href="/coming-soon"
                                 className={`
                                     inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white
                                     transition-all duration-300
@@ -299,7 +318,7 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
                                 `}
                             >
                                 Connect Wallet
-                            </button>
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -322,38 +341,30 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
                                 maintaining complete control of your personal data.
                             </p>
                             <div className="flex justify-center gap-4">
-                                <button 
-                                    onClick={() => wallet.signIn()} 
+                                <Link 
+                                    href="/coming-soon"
                                     className="px-8 py-4 bg-[#22886c] text-white rounded-lg hover:bg-[#1b6d56] transition-all duration-300 hover:scale-105"
                                 >
                                     Join Our Community
-                                </button>
-                                <Link
+                                </Link>
+                                <ScrollNavLink
                                     to="features"
-                                    spy={true}
-                                    smooth={true}
-                                    offset={-80}
-                                    duration={500}
                                     className="px-8 py-4 border-2 border-[#22886c] text-[#22886c] rounded-lg hover:bg-[#0f2c24] transition-all duration-300 hover:scale-105 cursor-pointer"
                                 >
                                     How It Works
-                                </Link>
+                                </ScrollNavLink>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-                    <Link
+                    <ScrollNavLink
                         to="features"
-                        spy={true}
-                        smooth={true}
-                        offset={-80}
-                        duration={500}
                         className="cursor-pointer"
                     >
                         <PiCaretDown size={24} className="text-[#22886c] hover:text-[#1b6d56] transition-colors" />
-                    </Link>
+                    </ScrollNavLink>
                 </div>
 
                 <div className="absolute inset-0 z-0 bg-[#071b16]/50 pointer-events-none"></div>
@@ -478,7 +489,6 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
                     </div>
                 </div>
             </section>
-
 
             <FAQSection />
 
