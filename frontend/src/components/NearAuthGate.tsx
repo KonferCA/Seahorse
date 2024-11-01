@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Wallet } from '@wallets';
 import { NetworkId } from '@/config';
 import Image from 'next/image';
@@ -14,7 +14,8 @@ import {
     PiShieldCheck,
     PiCaretDown,
     PiPlus,
-    PiGithubLogo
+    PiGithubLogo,
+    PiPlayCircle,
 } from "react-icons/pi";
 
 const faqData = [
@@ -125,6 +126,36 @@ const FAQSection: React.FC = () => {
     );
 };
 
+const VideoSection = () => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+  
+    const videoUrl = "https://dl.dropboxusercontent.com/scl/fi/6khl8o2roeo2zi9n9dz87/Lesson-One-1080p60.mp4?rlkey=2mei1vv6tmdg3oaor8iihzibf";
+  
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.play().catch((error: any) => {
+                console.log("Autoplay prevented:", error);
+            });
+        }
+    }, []);
+  
+    return (
+        <div className="relative w-full aspect-video mb-12 overflow-hidden rounded-xl bg-[#0f2c24]">
+            <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                playsInline
+                autoPlay
+                muted
+                loop
+            >
+                <source src={videoUrl} type="video/mp4" />
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    );
+};
+  
 const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
     const [isSignedIn, setIsSignedIn] = useState(false);
     const [wallet] = useState(new Wallet({ networkId: NetworkId }));
@@ -429,7 +460,7 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
                             </div>
                         </div>
 
-                        <div className="mt-12 p-8 bg-[#071b16] rounded-lg text-center">
+                        <div className="mt-12 p-8 bg-[#071b16] rounded-lg text-center mb-12">
                             <p className="text-white text-lg mb-6 font-light italic">
                                 "Seahorse is designed to bridge the gap between digital wellness tools and real-world connections. 
                                 We believe in the power of community support, enhanced by secure technology that respects your privacy."
@@ -441,6 +472,9 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
                                 Join Seahorse
                             </button>
                         </div>
+
+                        <VideoSection />
+
                     </div>
                 </div>
             </section>
