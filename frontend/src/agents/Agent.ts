@@ -89,7 +89,7 @@ export class Agent {
 
     private async fetchAllProviderData(
         progressCallback?: InitProgressCallback
-    ): Promise<string[]> {
+    ) {
         if (!this.wallet) return [];
 
         try {
@@ -129,7 +129,7 @@ export class Agent {
             }
 
             // fetch and process data
-            const allData: string[] = [];
+            const allData: Document[] = [];
             let processedItems = 0;
 
             for (const provider of providers) {
@@ -237,7 +237,9 @@ export class Agent {
             if (providerData.length > 0) {
                 try {
                     console.log('attempting to add documents to vector store');
-                    await this.vectorStore.addDocuments(providerData);
+                    await this.vectorStore.addDocuments(
+                        await this.textSplitter.splitDocuments(providerData)
+                    );
                     console.log('documents successfully added to vector store');
                     this.isVectorStoreEmpty = false;
                 } catch (error) {

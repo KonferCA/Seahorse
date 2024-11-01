@@ -135,32 +135,32 @@ export default function Home() {
                                     return prev.map((group) =>
                                         group.type === update.ragUpdate!.type
                                             ? {
-                                                  ...group,
-                                                  ...(update.ragUpdate
-                                                      ?.total !== undefined && {
-                                                      total: update.ragUpdate
-                                                          .total,
-                                                  }),
-                                                  ...(update.ragUpdate
-                                                      ?.completed !==
-                                                      undefined && {
-                                                      completed:
-                                                          update.ragUpdate
-                                                              .completed,
-                                                  }),
-                                                  ...(update.ragUpdate
-                                                      ?.error !== undefined && {
-                                                      error: update.ragUpdate
-                                                          .error,
-                                                  }),
-                                                  ...(update.ragUpdate
-                                                      ?.inProgress !==
-                                                      undefined && {
-                                                      inProgress:
-                                                          update.ragUpdate
-                                                              .inProgress,
-                                                  }),
-                                              }
+                                                ...group,
+                                                ...(update.ragUpdate
+                                                    ?.total !== undefined && {
+                                                    total: update.ragUpdate
+                                                        .total,
+                                                }),
+                                                ...(update.ragUpdate
+                                                    ?.completed !==
+                                                    undefined && {
+                                                    completed:
+                                                        update.ragUpdate
+                                                            .completed,
+                                                }),
+                                                ...(update.ragUpdate
+                                                    ?.error !== undefined && {
+                                                    error: update.ragUpdate
+                                                        .error,
+                                                }),
+                                                ...(update.ragUpdate
+                                                    ?.inProgress !==
+                                                    undefined && {
+                                                    inProgress:
+                                                        update.ragUpdate
+                                                            .inProgress,
+                                                }),
+                                            }
                                             : group
                                     );
                                 }
@@ -243,10 +243,10 @@ export default function Home() {
                             prev.map((group) =>
                                 group.type === item.type
                                     ? {
-                                          ...group,
-                                          completed: group.completed + 1,
-                                          inProgress: group.inProgress - 1,
-                                      }
+                                        ...group,
+                                        completed: group.completed + 1,
+                                        inProgress: group.inProgress - 1,
+                                    }
                                     : group
                             )
                         );
@@ -255,10 +255,10 @@ export default function Home() {
                             prev.map((group) =>
                                 group.type === item.type
                                     ? {
-                                          ...group,
-                                          error: group.error + 1,
-                                          inProgress: group.inProgress - 1,
-                                      }
+                                        ...group,
+                                        error: group.error + 1,
+                                        inProgress: group.inProgress - 1,
+                                    }
                                     : group
                             )
                         );
@@ -511,11 +511,10 @@ export default function Home() {
                                             progress.progress < 100)
                                     }
                                     className={`px-4 py-2 bg-[#22886c] text-white rounded-lg font-medium transition-all duration-300
-                                        ${
-                                            progress.progress > 0 &&
+                                        ${progress.progress > 0 &&
                                             progress.progress < 100
-                                                ? 'opacity-50 cursor-not-allowed'
-                                                : 'hover:bg-[#1b6d56] hover:scale-105'
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : 'hover:bg-[#1b6d56] hover:scale-105'
                                         }`}
                                 >
                                     Send
@@ -537,6 +536,18 @@ export default function Home() {
                         <ContextPanel items={contextItems} />
                     </div>
                 </div>
+                <VoiceModal
+                    isOpen={isVoiceModalOpen}
+                    onClose={() => setIsVoiceModalOpen(false)}
+                    onSave={(transcript) => {
+                        saveNote(transcript);
+                        setIsVoiceModalOpen(false);
+                    }}
+                    onSend={async (transcript) => {
+                        setIsVoiceModalOpen(false);
+                        setPrompt(transcript);
+                    }}
+                />
             </main>
         </NearAuthGate>
     );
