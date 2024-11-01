@@ -492,9 +492,7 @@ const NearAuthGate: React.FC<NearAuthGateProps> = ({ children }) => {
                                 Join Seahorse
                             </Link>
                         </div>
-
-                        <VideoSection />
-
+                        {/* <VideoSection /> */}
                     </div>
                 </div>
             </section>
