@@ -1,3 +1,4 @@
+// @ts-nocheck
 import localforage from 'localforage';
 
 // Create singleton instance

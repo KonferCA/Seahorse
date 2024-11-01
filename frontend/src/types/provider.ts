@@ -1,4 +1,4 @@
-type ProviderUsage = {
+export type ProviderUsage = {
     providerId: string;
     highestRelevancyScore: number;
     usageCount: number;
@@ -6,7 +6,7 @@ type ProviderUsage = {
     pendingScores: number[]; // array of all scores to be paid out
 };
 
-type PayoutStats = {
+export type PayoutStats = {
     totalProviders: number;
     totalUsages: number;
     averageRelevancy: number;

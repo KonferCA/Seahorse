@@ -5,11 +5,22 @@ import { PayoutStats, ProviderUsage } from '@/types/provider';
 
 const tracker = new ProviderTracker();
 
+type WalletContextType = {
+    wallet: {
+        callMethod: (params: { 
+            contractId: string; 
+            method: string; 
+            args: any 
+        }) => Promise<any>;
+    } | null | undefined;
+    signedAccountId: string;
+};
+
 export default function PayoutPanel() {
     const [stats, setStats] = useState<PayoutStats | null>(null);
     const [usages, setUsages] = useState<ProviderUsage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const { wallet } = useContext(NearContext);
+    const { wallet } = useContext(NearContext) as WalletContextType;
 
     const loadStats = async () => {
         const currentUsages = await tracker.getProviderUsages();
@@ -32,12 +43,12 @@ export default function PayoutPanel() {
     }, []);
 
     const handlePayout = async () => {
-        if (!usages.length) return;
+        if (!usages.length || !wallet) return;
         
         setIsLoading(true);
         try {
             const allScores = usages.flatMap(usage => 
-                (usage.pendingScores || []).map(score => ({
+                (usage.pendingScores || []).map((score: number) => ({
                     providerId: usage.providerId,
                     relevancyScore: Math.floor(score * 100)
                 }))

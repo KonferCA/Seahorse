@@ -1,9 +1,25 @@
-export function formatCalendarEvent(event) {
-  // extract key terms from description for better matching
-  const description = event.description?.toLowerCase() || '';
-  const summary = event.summary?.toLowerCase() || '';
-  
-  return `
+interface CalendarEvent {
+    id: string;
+    summary?: string;
+    description?: string;
+    start: {
+        dateTime?: string;
+        date?: string;
+    };
+    end?: {
+        dateTime?: string;
+        date?: string;
+    };
+    location?: string;
+    attendees?: { email: string }[];
+}
+
+export function formatCalendarEvent(event: CalendarEvent): string {
+    // extract key terms from description for better matching
+    const description = event.description?.toLowerCase() || '';
+    const summary = event.summary?.toLowerCase() || '';
+    
+    return `
 ----------------------------------------
 EVENT DETAILS
 ----------------------------------------
@@ -14,7 +30,7 @@ Location: ${event.location || 'No location'}
 Keywords: ${extractKeywords(summary + ' ' + description)}
 Description: ${event.description || 'No description'}
 ----------------------------------------
-  `.trim();
+    `.trim();
 }
 
 function extractKeywords(text: string) {
@@ -30,13 +46,18 @@ function extractKeywords(text: string) {
   return keywords;
 }
 
-export function formatEmail(email) {
+interface EmailHeader {
+  name: string;
+  value: string;
+}
+
+export function formatEmail(email: { payload: { headers: EmailHeader[] }, internalDate: string, snippet?: string }) {
   const subject = email.payload.headers.find(
-    header => header.name === 'Subject'
+    (header: EmailHeader) => header.name === 'Subject'
   )?.value || 'No subject';
   
   const from = email.payload.headers.find(
-    header => header.name === 'From'
+    (header: EmailHeader) => header.name === 'From'
   )?.value || 'No sender';
 
   return `
@@ -51,8 +72,47 @@ Content: ${email.snippet?.replace(/[\n\r]/g, ' ').trim() || 'No preview availabl
   `.trim();
 }
 
-export function formatGoogleData(calendar, emails) {
-    const formattedItems = [];
+interface GoogleCalendarEvent {
+    id: string;
+    summary?: string;
+    description?: string;
+    start: {
+        dateTime?: string;
+        date?: string;
+    };
+    end?: {
+        dateTime?: string;
+        date?: string;
+    };
+    location?: string;
+    attendees?: { email: string }[];
+}
+
+interface GoogleEmail {
+    id: string;
+    payload: {
+        headers: EmailHeader[];
+    };
+    internalDate: string;
+    snippet?: string;
+}
+
+interface FormattedItem {
+    type: 'calendar' | 'email';
+    content: string;
+    metadata: {
+        type: 'calendar' | 'email';
+        eventId?: string;
+        emailId?: string;
+        title: string;
+        date: string | null;
+        endDate?: string | null;
+        from?: string;
+    };
+}
+
+export function formatGoogleData(calendar: GoogleCalendarEvent[], emails: GoogleEmail[]): FormattedItem[] {
+    const formattedItems: FormattedItem[] = [];
     
     // format calendar events
     calendar.forEach(event => {

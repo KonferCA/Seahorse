@@ -1,25 +1,27 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    webpack: (config) => {
-        // Enable experimental features
+    webpack: (config, { isServer, dev }) => {
         config.experiments = {
             ...config.experiments,
             asyncWebAssembly: true,
             layers: true,
         };
-
-        // Ignore node-specific modules when bundling for the browser
-        // https://webpack.js.org/configuration/resolve/#resolvealias
-        config.resolve.alias = {
-            ...config.resolve.alias,
-            sharp$: false,
-            'onnxruntime-node$': false,
-            fs: false,
-            net: false,
-            tls: false,
+        
+        config.output = {
+            ...config.output,
+            webassemblyModuleFilename: 'static/wasm/[modulehash].wasm',
         };
+
+        // Add WASM file handling
+        config.module.rules.push({
+            test: /\.wasm$/,
+            type: "asset/resource"
+        })
+
         return config;
     },
+
+    output: 'standalone',
 };
 
 module.exports = nextConfig;

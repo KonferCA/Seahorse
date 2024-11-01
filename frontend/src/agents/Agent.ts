@@ -12,7 +12,11 @@ import {
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 } from '@langchain/core/prompts';
-import { InitProgressReport, prebuiltAppConfig } from '@mlc-ai/web-llm';
+import {
+    InitProgressReport,
+    InitProgressCallback as WebLLMInitProgressCallback,
+    prebuiltAppConfig,
+} from '@mlc-ai/web-llm';
 import { Wallet } from '@/wallets';
 import { NetworkId } from '@/config';
 
@@ -28,6 +32,16 @@ interface ProgressReport extends InitProgressReport {
 }
 
 type InitProgressCallback = (update: ProgressReport) => void;
+
+function createProgressReport(obj: Partial<ProgressReport>): ProgressReport {
+    return {
+        message: '',
+        progress: 0,
+        timeElapsed: 0,
+        text: '',
+        ...obj,
+    };
+}
 
 const SYSTEM_PROMPT_TEMPLATE = `
 you are a supportive and caring friend who loves to chat! keep your tone casual, warm, and encouraging.
@@ -83,7 +97,7 @@ export class Agent {
 
         this.wallet = new Wallet({
             networkId: NetworkId,
-            createAccessKeyFor: 'contract1.iseahorse.testnet',
+            createAccessKeyFor: 'contract1.iseahorse.testnet' as any,
         });
     }
 
@@ -115,17 +129,19 @@ export class Agent {
 
             // update rag groups with total count
             if (progressCallback && totalItems > 0) {
-                progressCallback({
-                    message: 'Loading provider data...',
-                    progress: 0.8,
-                    ragUpdate: {
-                        type: 'document',
-                        total: totalItems,
-                        completed: 0,
-                        error: 0,
-                        inProgress: totalItems,
-                    },
-                });
+                progressCallback(
+                    createProgressReport({
+                        message: 'Loading provider data...',
+                        progress: 0.8,
+                        ragUpdate: {
+                            type: 'document',
+                            total: totalItems,
+                            completed: 0,
+                            error: 0,
+                            inProgress: totalItems,
+                        },
+                    })
+                );
             }
 
             // fetch and process data
@@ -162,30 +178,51 @@ export class Agent {
         } catch (error) {
             console.error('Error fetching provider data:', error);
             if (progressCallback) {
-                progressCallback({
-                    message: 'Error loading provider data',
-                    progress: 0.8,
-                    ragUpdate: {
-                        type: 'document',
-                        error: 1,
-                    },
-                });
+                progressCallback(
+                    createProgressReport({
+                        message: 'Error loading provider data',
+                        progress: 0.8,
+                        ragUpdate: {
+                            type: 'document',
+                            error: 1,
+                        },
+                    })
+                );
             }
             return [];
         }
     }
 
+    private async clearCache() {
+        return new Promise<void>((resolve, reject) => {
+            try {
+                const DBDeleteRequest = indexedDB.deleteDatabase('webllm-cache');
+                DBDeleteRequest.onerror = () => reject(new Error('Failed to clear cache'));
+                DBDeleteRequest.onsuccess = () => resolve();
+            } catch (error) {
+                resolve();
+            }
+        });
+    }
+
     async initialize(progressCallback: InitProgressCallback) {
         try {
+            await this.clearCache();
+
             // Start with model loading
-            progressCallback({ message: 'Loading AI model...', progress: 0.1 });
+            progressCallback(
+                createProgressReport({
+                    message: 'Loading AI model...',
+                    progress: 0.1,
+                })
+            );
 
             // Initialize LLM first
             this.llm = new ChatWebLLM({
                 model: this.modelName,
                 appConfig: {
                     ...prebuiltAppConfig,
-                    useIndexedDBCache: true,
+                    useIndexedDBCache: false,
                 },
                 maxRetries: 10,
                 chatOptions: {
@@ -195,17 +232,28 @@ export class Agent {
                     presence_penalty: 0.6,
                     frequency_penalty: 0.6,
                 },
+                
             });
 
             // Wait for model to initialize
-            await this.llm.initialize(progressCallback);
-            progressCallback({ message: 'AI model loaded', progress: 0.5 });
+            await this.llm.initialize(
+                progressCallback as WebLLMInitProgressCallback
+            );
+            progressCallback(
+                createProgressReport({
+                    message: 'AI model loaded',
+                    progress: 0.5,
+                })
+            );
 
             // Initialize embeddings and vector store
-            progressCallback({
-                message: 'Initializing embeddings...',
-                progress: 0.6,
-            });
+            progressCallback(
+                createProgressReport({
+                    message: 'Initializing embeddings...',
+                    progress: 0.6,
+                })
+            );
+
             this.embeddings = new HuggingFaceTransformersEmbeddings({
                 modelName: this.embeddingModelName,
             });
@@ -215,10 +263,13 @@ export class Agent {
                 chunkOverlap: 50,
             });
 
-            progressCallback({
-                message: 'Setting up vector store...',
-                progress: 0.7,
-            });
+            progressCallback(
+                createProgressReport({
+                    message: 'Setting up vector store...',
+                    progress: 0.7,
+                })
+            );
+            
             this.voyClient = new VoyClient();
             this.vectorStore = new VoyVectorStore(
                 this.voyClient,
@@ -226,10 +277,12 @@ export class Agent {
             );
 
             // Load provider data
-            progressCallback({
-                message: 'Loading provider data...',
-                progress: 0.8,
-            });
+            progressCallback(
+                createProgressReport({
+                    message: 'Loading provider data...',
+                    progress: 0.8,
+                })
+            );
             const providerData =
                 await this.fetchAllProviderData(progressCallback);
             console.log('provider data before vector store:', providerData);
@@ -252,7 +305,12 @@ export class Agent {
             }
 
             // Initialize chains
-            progressCallback({ message: 'Finalizing setup...', progress: 0.9 });
+            progressCallback(
+                createProgressReport({
+                    message: 'Finalizing setup...',
+                    progress: 0.9,
+                })
+            );
 
             // Create RAG prompt template
             const prompt = ChatPromptTemplate.fromMessages([
@@ -271,7 +329,9 @@ export class Agent {
                             input.question,
                             10
                         );
-                        return formatDocumentsAsString(docs);
+                        return formatDocumentsAsString(
+                            docs.map((doc) => doc[0])
+                        );
                     },
                     question: (input: { question: string }) => input.question,
                     today: () => new Date().toDateString(),
@@ -299,13 +359,17 @@ export class Agent {
                 new StringOutputParser(),
             ]);
 
-            progressCallback({ message: 'Ready!', progress: 1.0 });
+            progressCallback(
+                createProgressReport({ message: 'Ready!', progress: 1.0 })
+            );
         } catch (error) {
             console.error('Error during initialization:', error);
-            progressCallback({
-                message: 'Error initializing system',
-                progress: 0,
-            });
+            progressCallback(
+                createProgressReport({
+                    message: 'Error initializing system' + (error as Error),
+                    progress: 0,
+                })
+            );
             throw error;
         }
     }

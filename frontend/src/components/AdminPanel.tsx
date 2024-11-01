@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { Wallet } from '@/wallets';
 import { NetworkId } from '@/config';
@@ -38,7 +39,7 @@ export default function AdminPanel() {
         const initWallet = async () => {
             const walletInstance = new Wallet({ 
                 networkId: NetworkId, 
-                createAccessKeyFor: 'contract1.iseahorse.testnet' 
+                createAccessKeyFor: 'contract1.iseahorse.testnet'
             });
             
             // add callback function for account changes

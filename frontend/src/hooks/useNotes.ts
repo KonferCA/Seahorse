@@ -11,6 +11,8 @@ interface Note {
     };
 }
 
+import { Agent } from '@/agents/Agent';
+
 interface UseNotesProps {
     agent: Agent | null;
     setRagGroups: React.Dispatch<React.SetStateAction<GroupProgress[]>>;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-interface Note {
+export interface Note {
     id: string;
     title: string;
     content: string;
