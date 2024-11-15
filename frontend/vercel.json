@@ -1,9 +1,9 @@
 {
-    "version": 2, // Deployment configuration version
+    "version": 2, 
     "framework": "nextjs",
-    "buildCommand": "pnpm build", // Command to build the Next.js project
+    "buildCommand": "pnpm build",
     "installCommand": "pnpm i",
-    "outputDirectory": ".next", // Directory for the build output
+    "outputDirectory": ".next",
     "regions": ["sfo1"],
     "env": {
       "NEXT_PUBLIC_NETWORK_ID": "testnet"
